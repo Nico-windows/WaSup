@@ -233,6 +233,7 @@ body {
 .modal-content button:hover {
   background-color: #4e5bbf;
 }
- .hidden {
+
+.hidden {
   display: none !important;
- }
+}

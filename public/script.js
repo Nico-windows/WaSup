@@ -64,6 +64,7 @@ function updateServerUI(serverName) {
       currentServer.textContent = `Server: ${serverName}`;
       messagesDiv.innerHTML = '';  // Clear current messages
       updatePeopleList();
+      socket.emit('join server', { serverName, username }); // Join the server to fetch messages
     });
     serverList.appendChild(serverItem);
   }
@@ -110,6 +111,17 @@ socket.on('server message', ({ username, message }) => {
   
   messagesDiv.appendChild(messageElement);
   messagesDiv.scrollTop = messagesDiv.scrollHeight;  // Auto-scroll to latest message
+});
+
+// Receive previous messages when joining a server
+socket.on('server messages', (messages) => {
+  messages.forEach(({ username, message }) => {
+    const messageElement = document.createElement('div');
+    messageElement.innerHTML = `<strong>${username}:</strong> ${message}`;
+    
+    // Append the message to the chat
+    messagesDiv.appendChild(messageElement);
+  });
 });
 
 
