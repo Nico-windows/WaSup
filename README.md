@@ -4,7 +4,7 @@ If you want to build yourself use:
 "node server.js" 
 
 The entirety was built my me and took the whole semester.
-Feuatures:
+Features:
 - Working messaging app
 - Working servers
 - DMS (WIP, not out yet)
