@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WaSup</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Sidebar -->
+    <div id="sidebar">
+      <h2>Servers</h2>
+      <ul id="server-list"></ul>
+      <button id="manage-server-button">+ Manage Servers</button>
+    </div>
+
+    <!-- Main Content -->
+    <div id="main">
+      <div id="chat-header">
+        <h2 id="current-server">Welcome</h2>
+      </div>
+      <div id="main-content">
+        <div id="chat">
+          <div id="messages"></div>
+        </div>
+        <div id="people-list">
+          <h3>People</h3>
+          <ul id="user-list"></ul>
+        </div>
+      </div>
+      <div id="input-area">
+        <input type="text" id="message-input" placeholder="Type a message...">
+        <button id="send-button">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Server Modal -->
+  <div id="server-modal" class="hidden">
+    <div class="modal-content">
+      <h2>Manage Servers</h2>
+      <input type="text" id="server-name-input" placeholder="Enter server name...">
+      <button id="create-server-button">Create Server</button>
+      <button id="join-server-button">Join Server</button>
+      <h3>Discover Servers</h3>
+      <ul id="discover-servers-list"></ul>
+      <button id="modal-close-button">Close</button>
+    </div>
+  </div>
+
+
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
