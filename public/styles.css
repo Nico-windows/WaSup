@@ -237,3 +237,41 @@ body {
 .hidden {
   display: none !important;
 }
+
+/* Discover Servers Modal Styles */
+#discover-servers-list {
+  margin-top: 15px;
+  padding: 0;
+  list-style-type: none;
+}
+
+#discover-servers-list li {
+  padding: 10px;
+  background-color: #3a3f44;
+  margin: 5px 0;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+#discover-servers-list li:hover {
+  background-color: #5865f2;
+  color: white;
+}
+
+/* Close button for Discover Servers */
+#discover-close-button {
+  background-color: #f04747;
+  border: none;
+  color: white;
+  padding: 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  width: 100%;
+  margin-top: 10px;
+}
+
+#discover-close-button:hover {
+  background-color: #d43f3f;
+}
+
