@@ -7,7 +7,6 @@ The entirety was built my me and took the whole semester.
 Features:
 - Working messaging app
 - Working servers
-- DMS (WIP, not out yet)
 - Discover servers
 - Joining and creating servers
 - People tab
