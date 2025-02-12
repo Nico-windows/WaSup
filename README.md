@@ -15,8 +15,8 @@ Features:
 
 I'll update this as I finish features, find my timeline below:
 
-End of feb --> DM's functionality
-End of march --> Main chat functionaility done.
+End of feb --> Add files functionality.
+End of march --> Main chat functionality done.
 End of April --> Login page done.
 May --> Version 1 + bugs fleshed out.
 
