@@ -1,1 +1,17 @@
-{}
+{
+  "dms": {
+    "ejrfie-nico": [
+      {
+        "from": "nico",
+        "to": "ejrfie",
+        "message": "hi",
+        "timestamp": 1742584889462
+      }
+    ]
+  },
+  "unreadDms": {
+    "nicoworkemail123@gmail.com": {},
+    "nico": {},
+    "ejrfie": {}
+  }
+}

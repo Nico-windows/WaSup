@@ -25,6 +25,7 @@
         <button class="primary-button" id="login-button">Login</button>
       </div>
       <p class="toggle-auth">Don't have an account? <span id="go-to-signup">Sign up</span></p>
+      <p class="toggle-auth">Forgot password? <span id="go-to-reset">Reset password</span></p>
     </div>
 
     <div class="auth-form hidden" id="signup-form">
@@ -32,6 +33,10 @@
       <div class="input-group">
         <label for="signup-username">Username</label>
         <input type="text" id="signup-username" placeholder="Choose a username" autocomplete="username">
+      </div>
+      <div class="input-group">
+        <label for="signup-email">Email</label>
+        <input type="email" id="signup-email" placeholder="Enter your email" autocomplete="email">
       </div>
       <div class="input-group">
         <label for="signup-password">Password</label>
@@ -46,6 +51,29 @@
         <button class="primary-button" id="signup-button">Sign Up</button>
       </div>
       <p class="toggle-auth">Already have an account? <span id="go-to-login">Login</span></p>
+    </div>
+
+    <div class="auth-form hidden" id="reset-form">
+      <h2>Reset Password</h2>
+      <div class="input-group">
+        <label for="reset-email">Email</label>
+        <input type="email" id="reset-email" placeholder="Enter your email" autocomplete="email">
+      </div>
+      <div class="error-message" id="reset-error"></div>
+      <div class="success-message" id="reset-success"></div>
+      <div class="auth-form-buttons">
+        <button class="primary-button" id="reset-button">Send Reset Link</button>
+      </div>
+      <p class="toggle-auth">Remember your password? <span id="back-to-login">Back to login</span></p>
+    </div>
+
+    <div class="auth-form hidden" id="email-verification">
+      <h2>Email Verification</h2>
+      <p>A verification email has been sent to your email address.</p>
+      <p>Please check your inbox and click the verification link to activate your account.</p>
+      <div class="auth-form-buttons">
+        <button class="primary-button" id="back-to-login-button">Back to Login</button>
+      </div>
     </div>
   </div>
 
