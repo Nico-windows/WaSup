@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "bcrypt": "^5.1.1",
     "express": "^4.21.2",
     "mongoose": "^8.9.5",
     "socket.io": "^4.8.1",
@@ -15,5 +16,6 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": ""
+  "description": "A hobby and school PEP (Personal Exploration Project) using a node.js server for backend and html, javascript and css for frontend.",
+  "type": "commonjs"
 }
