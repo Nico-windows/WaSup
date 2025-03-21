@@ -2,27 +2,54 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="google-adsense-account" content="ca-pub-8241726550799268">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>WaSup</title>
+  <link rel="icon" type="image/x-icon" href="/images/favicon.ico">
   <link rel="stylesheet" href="styles.css">
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8241726550799268"
-     crossorigin="anonymous"></script>
 </head>
 <body>
-  <script async="async" data-cfasync="false" src="//pl25772826.profitablecpmrate.com/3ec6820b3a34233ff327c138f50ed351/invoke.js"></script>
-<div id="container-3ec6820b3a34233ff327c138f50ed351"></div>
-  <script type="text/javascript">
-	atOptions = {
-		'key' : '21755b056ae399e61a12bb91ebc80428',
-		'format' : 'iframe',
-		'height' : 60,
-		'width' : 468,
-		'params' : {}
-	};
-</script>
-<script type="text/javascript" src="//www.highperformanceformat.com/21755b056ae399e61a12bb91ebc80428/invoke.js"></script>
-  <div id="app">
+  <!-- Auth Container -->
+  <div id="auth-container">
+    <div class="auth-form" id="login-form">
+      <h2>Login to WaSup</h2>
+      <div class="input-group">
+        <label for="login-username">Username</label>
+        <input type="text" id="login-username" placeholder="Enter your username" autocomplete="username">
+      </div>
+      <div class="input-group">
+        <label for="login-password">Password</label>
+        <input type="password" id="login-password" placeholder="Enter your password" autocomplete="current-password">
+      </div>
+      <div class="error-message" id="login-error"></div>
+      <div class="auth-form-buttons">
+        <button class="primary-button" id="login-button">Login</button>
+      </div>
+      <p class="toggle-auth">Don't have an account? <span id="go-to-signup">Sign up</span></p>
+    </div>
+
+    <div class="auth-form hidden" id="signup-form">
+      <h2>Create an Account</h2>
+      <div class="input-group">
+        <label for="signup-username">Username</label>
+        <input type="text" id="signup-username" placeholder="Choose a username" autocomplete="username">
+      </div>
+      <div class="input-group">
+        <label for="signup-password">Password</label>
+        <input type="password" id="signup-password" placeholder="Choose a password" autocomplete="new-password">
+      </div>
+      <div class="input-group">
+        <label for="signup-confirm-password">Confirm Password</label>
+        <input type="password" id="signup-confirm-password" placeholder="Confirm your password" autocomplete="new-password">
+      </div>
+      <div class="error-message" id="signup-error"></div>
+      <div class="auth-form-buttons">
+        <button class="primary-button" id="signup-button">Sign Up</button>
+      </div>
+      <p class="toggle-auth">Already have an account? <span id="go-to-login">Login</span></p>
+    </div>
+  </div>
+
+  <div id="app" class="hidden">
     <!-- Sidebar -->
     <div id="sidebar">
       <h2>Servers</h2>
@@ -34,6 +61,10 @@
     <div id="main">
       <div id="chat-header">
         <h2 id="current-server">Welcome</h2>
+        <div class="user-actions">
+          <span id="user-display"></span>
+          <button id="logout-button">Logout</button>
+        </div>
       </div>
       <div id="main-content">
         <div id="chat">
@@ -55,7 +86,7 @@
   <div id="server-modal" class="hidden">
     <div class="modal-content">
       <h2>Manage Servers</h2>
-      <input type="text" id="server-name-input" placeholder="Enter server name...">
+      <input type="text" id="server-name-input" placeholder="Enter server name..." maxlength="20">
       <button id="create-server-button">Create Server</button>
       <button id="join-server-button">Join Server</button>
       <h3>Discover Servers</h3>
@@ -63,8 +94,6 @@
       <button id="modal-close-button">Close</button>
     </div>
   </div>
-
-
 
   <script src="/socket.io/socket.io.js"></script>
   <script src="script.js"></script>

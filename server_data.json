@@ -1,1 +1,20 @@
-{}
+{
+  "servers": {
+    "hi": [
+      "Nico",
+      "Nicolas"
+    ]
+  },
+  "messages": {
+    "hi": [
+      {
+        "username": "Nico",
+        "message": "hi"
+      },
+      {
+        "username": "Nicolas",
+        "message": "hi"
+      }
+    ]
+  }
+}
