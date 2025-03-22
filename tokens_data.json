@@ -1,1 +1,13 @@
-{}
+{
+  "verificationTokens": {},
+  "resetTokens": {},
+  "userActivity": {
+    "nico": {
+      "server": "gr",
+      "dm": null
+    }
+  },
+  "unreadServers": {
+    "nico": {}
+  }
+}

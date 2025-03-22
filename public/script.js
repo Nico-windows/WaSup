@@ -56,6 +56,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const userList = document.getElementById('user-list');
     const discoverServersList = document.getElementById('discover-servers-list');
     const peopleList = document.getElementById('people-list');
+    const fileInput = document.getElementById('file-input');
+    const attachmentPreview = document.getElementById('attachment-preview');
+    const notificationBanner = document.getElementById('notification-banner');
+    const allowNotificationsBtn = document.getElementById('allow-notifications');
+    const denyNotificationsBtn = document.getElementById('deny-notifications');
   
     // App state
     let username = '';
@@ -68,6 +73,11 @@ document.addEventListener('DOMContentLoaded', () => {
     let lastActivity = { server: null, dm: null }; // Track last active server/dm
     let joinedServers = []; // Keep track of servers user has joined
     let unreadServers = {}; // Track unread messages in servers
+    let selectedFile = null;
+    let notificationPermission = 'default';
+    
+    // Maximum number of rendered messages
+    const MAX_RENDERED_MESSAGES = 100;
     
     // Toggle between auth forms
     goToSignup.addEventListener('click', () => {
@@ -113,6 +123,167 @@ document.addEventListener('DOMContentLoaded', () => {
       signupError.textContent = '';
       resetError.textContent = '';
       resetSuccess.textContent = '';
+    }
+  
+    // Notifications initialization
+    function initNotifications() {
+      // Check if browser supports notifications
+      if (!('Notification' in window)) {
+        console.log('This browser does not support notifications');
+        return;
+      }
+  
+      // Check if we already have permission
+      if (Notification.permission === 'granted') {
+        notificationPermission = 'granted';
+        return;
+      } 
+      
+      // Show notification banner if permission hasn't been denied
+      if (Notification.permission !== 'denied') {
+        setTimeout(() => {
+          notificationBanner.classList.remove('hidden');
+        }, 3000); // Show after 3 seconds to let the user get familiar with the app first
+      }
+    }
+  
+    // Set up notification permission handlers
+    allowNotificationsBtn.addEventListener('click', () => {
+      Notification.requestPermission().then((permission) => {
+        notificationPermission = permission;
+        notificationBanner.classList.add('hidden');
+      });
+    });
+  
+    denyNotificationsBtn.addEventListener('click', () => {
+      notificationBanner.classList.add('hidden');
+    });
+  
+    // Show notification
+    function showNotification(title, body, icon) {
+      if (notificationPermission !== 'granted' || document.hasFocus()) {
+        return; // Don't show notification if we don't have permission or the app is in focus
+      }
+      
+      const notification = new Notification(title, {
+        body: body,
+        icon: icon || '/favicon.ico'
+      });
+      
+      notification.onclick = function() {
+        window.focus();
+        this.close();
+      };
+    }
+  
+    // File handling
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files.length > 0) {
+        selectedFile = e.target.files[0];
+        
+        // Check file size (max 5MB)
+        if (selectedFile.size > 5 * 1024 * 1024) {
+          alert('File size exceeds 5MB limit');
+          selectedFile = null;
+          fileInput.value = '';
+          return;
+        }
+        
+        // Show file preview
+        showFilePreview(selectedFile);
+      }
+    });
+  
+    function showFilePreview(file) {
+      const reader = new FileReader();
+      
+      attachmentPreview.innerHTML = '';
+      attachmentPreview.classList.remove('hidden');
+      
+      const previewContainer = document.createElement('div');
+      previewContainer.className = 'attachment-preview';
+      
+      const isImage = file.type.startsWith('image/');
+      
+      if (isImage) {
+        reader.onload = function(e) {
+          const img = document.createElement('img');
+          img.src = e.target.result;
+          previewContainer.appendChild(img);
+        };
+        reader.readAsDataURL(file);
+      } else {
+        const fileIcon = document.createElement('div');
+        fileIcon.innerHTML = '📄';
+        fileIcon.className = 'file-icon';
+        previewContainer.appendChild(fileIcon);
+      }
+      
+      const infoDiv = document.createElement('div');
+      infoDiv.className = 'attachment-info';
+      
+      const fileName = document.createElement('div');
+      fileName.className = 'attachment-name';
+      fileName.textContent = file.name;
+      
+      const fileSize = document.createElement('div');
+      fileSize.className = 'attachment-size';
+      fileSize.textContent = formatFileSize(file.size);
+      
+      infoDiv.appendChild(fileName);
+      infoDiv.appendChild(fileSize);
+      previewContainer.appendChild(infoDiv);
+      
+      const removeButton = document.createElement('button');
+      removeButton.className = 'attachment-remove';
+      removeButton.innerHTML = '×';
+      removeButton.addEventListener('click', () => {
+        selectedFile = null;
+        fileInput.value = '';
+        attachmentPreview.classList.add('hidden');
+      });
+      
+      previewContainer.appendChild(removeButton);
+      attachmentPreview.appendChild(previewContainer);
+      
+      // Add a progress bar for upload
+      const progressBar = document.createElement('div');
+      progressBar.className = 'file-upload-progress';
+      attachmentPreview.appendChild(progressBar);
+    }
+  
+    function formatFileSize(bytes) {
+      if (bytes < 1024) return bytes + ' bytes';
+      else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+      else return (bytes / 1048576).toFixed(1) + ' MB';
+    }
+  
+    // Create HTML for attachment display
+    function createAttachmentHTML(attachment) {
+      const { filename, filesize, fileType, fileUrl } = attachment;
+      
+      let attachmentHTML = `<div class="attachment-container">`;
+      
+      if (fileType.startsWith('image/')) {
+        attachmentHTML += `
+          <img src="${fileUrl}" alt="${filename}" class="image-attachment" onclick="window.open('${fileUrl}', '_blank')">
+        `;
+      } else {
+        attachmentHTML += `
+          <div class="file-attachment">
+            <div class="file-icon">📄</div>
+            <div class="file-details">
+              <div class="file-name">${filename}</div>
+              <div class="file-size">${formatFileSize(filesize)}</div>
+            </div>
+            <a href="${fileUrl}" target="_blank" class="download-button">Download</a>
+          </div>
+        `;
+      }
+      
+      attachmentHTML += `</div>`;
+      
+      return attachmentHTML;
     }
   
     // Handle login
@@ -186,6 +357,9 @@ document.addEventListener('DOMContentLoaded', () => {
       socket.emit('get dms');
       socket.emit('get all users');
       
+      // Initialize notifications
+      initNotifications();
+      
       // Restore last active server or DM
       if (data.lastActivity) {
         lastActivity = data.lastActivity;
@@ -211,54 +385,6 @@ document.addEventListener('DOMContentLoaded', () => {
       // Update server list UI with all joined servers
       updateServerListUI();
     });
-  
-    // Update server list UI with joined servers and unread status
-    function updateServerListUI() {
-      serverList.innerHTML = '';
-      
-      joinedServers.forEach(serverName => {
-        const serverItem = document.createElement('li');
-        
-        // Add unread indicator if server has unread messages
-        if (unreadServers[serverName]) {
-          serverItem.innerHTML = `${serverName} <span class="unread-badge">!</span>`;
-        } else {
-          serverItem.textContent = serverName;
-        }
-        
-        // Highlight active server
-        if (activeServer === serverName && chatMode === 'server') {
-          serverItem.classList.add('active');
-        }
-        
-        // Add click handler to switch to this server
-        serverItem.addEventListener('click', () => {
-          switchToServer(serverName);
-        });
-        
-        serverList.appendChild(serverItem);
-      });
-    }
-  
-    // Switch to a server without rejoining
-    function switchToServer(serverName) {
-      if (serverName === activeServer && chatMode === 'server') return;
-      
-      activeServer = serverName;
-      
-      // Clear unread status for this server
-      if (unreadServers[serverName]) {
-        socket.emit('mark server read', { serverName });
-        delete unreadServers[serverName];
-        updateServerListUI();
-      }
-      
-      switchToServerMode(serverName);
-      
-      // Get server messages and users
-      socket.emit('get server messages', { serverName });
-      socket.emit('get server users', { serverName });
-    }
   
     // Handle signup success
     socket.on('signup success', () => {
@@ -322,6 +448,8 @@ document.addEventListener('DOMContentLoaded', () => {
       lastActivity = { server: null, dm: null };
       joinedServers = [];
       unreadServers = {};
+      selectedFile = null;
+      attachmentPreview.classList.add('hidden');
     });
   
     // Open Manage Servers Modal
@@ -392,6 +520,34 @@ document.addEventListener('DOMContentLoaded', () => {
       switchToServer(serverName);
     });
   
+    // Update server list UI with joined servers and unread status
+    function updateServerListUI() {
+      serverList.innerHTML = '';
+      
+      joinedServers.forEach(serverName => {
+        const serverItem = document.createElement('li');
+        
+        // Add unread indicator if server has unread messages
+        if (unreadServers[serverName]) {
+          serverItem.innerHTML = `${serverName} <span class="unread-badge">!</span>`;
+        } else {
+          serverItem.textContent = serverName;
+        }
+        
+        // Highlight active server
+        if (activeServer === serverName && chatMode === 'server') {
+          serverItem.classList.add('active');
+        }
+        
+        // Add click handler to switch to this server
+        serverItem.addEventListener('click', () => {
+          switchToServer(serverName);
+        });
+        
+        serverList.appendChild(serverItem);
+      });
+    }
+  
     // Create or update DM list
     function updateDmList(dms) {
       dmList.innerHTML = '';
@@ -413,6 +569,26 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         dmList.appendChild(dmItem);
       });
+    }
+  
+    // Switch to a server without rejoining
+    function switchToServer(serverName) {
+      if (serverName === activeServer && chatMode === 'server') return;
+      
+      activeServer = serverName;
+      
+      // Clear unread status for this server
+      if (unreadServers[serverName]) {
+        socket.emit('mark server read', { serverName });
+        delete unreadServers[serverName];
+        updateServerListUI();
+      }
+      
+      switchToServerMode(serverName);
+      
+      // Get server messages and users
+      socket.emit('get server messages', { serverName });
+      socket.emit('get server users', { serverName });
     }
   
     // Switch to server mode
@@ -544,15 +720,66 @@ document.addEventListener('DOMContentLoaded', () => {
     // Send Message (both server and DM)
     function sendMessage() {
       const message = input.value.trim();
-      if (!message) return;
+      
+      if (!message && !selectedFile) return;
       
       if (chatMode === 'server' && activeServer) {
-        socket.emit('server message', { serverName: activeServer, message });
+        if (selectedFile) {
+          uploadAndSendFile(activeServer, null, message);
+        } else {
+          socket.emit('server message', { serverName: activeServer, message });
+        }
       } else if (chatMode === 'dm' && activeDm) {
-        socket.emit('dm message', { to: activeDm, message });
+        if (selectedFile) {
+          uploadAndSendFile(null, activeDm, message);
+        } else {
+          socket.emit('dm message', { to: activeDm, message });
+        }
       }
       
       input.value = '';
+    }
+  
+    function uploadAndSendFile(serverName, dmUser, textMessage) {
+      const progressBar = document.querySelector('.file-upload-progress');
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      
+      if (textMessage) {
+        formData.append('message', textMessage);
+      }
+      
+      if (serverName) {
+        formData.append('serverName', serverName);
+      } else if (dmUser) {
+        formData.append('to', dmUser);
+      }
+      
+      // Add socket ID and username to headers
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/api/upload', true);
+      xhr.setRequestHeader('X-Socket-ID', socket.id);
+      xhr.setRequestHeader('X-Username', username);
+      
+      xhr.upload.onprogress = function(e) {
+        if (e.lengthComputable) {
+          const percentComplete = (e.loaded / e.total) * 100;
+          progressBar.style.width = percentComplete + '%';
+        }
+      };
+      
+      xhr.onload = function() {
+        if (xhr.status === 200) {
+          // Success - clear the selected file
+          selectedFile = null;
+          fileInput.value = '';
+          attachmentPreview.classList.add('hidden');
+        } else {
+          alert('Error uploading file. Please try again.');
+        }
+      };
+      
+      xhr.send(formData);
     }
   
     // Send message on Enter key
@@ -565,75 +792,232 @@ document.addEventListener('DOMContentLoaded', () => {
     // Send message on button click
     sendButton.addEventListener('click', sendMessage);
   
+    // Safe scrolling that won't break the UI
+    function safeScrollToBottom() {
+      // Use requestAnimationFrame to ensure DOM is updated before scrolling
+      requestAnimationFrame(() => {
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      });
+    }
+  
+    // Function to render a batch of messages efficiently
+    function renderMessages(messages) {
+      // Create a document fragment to batch DOM operations
+      const fragment = document.createDocumentFragment();
+      
+      messages.forEach(({ username: msgUsername, message, timestamp, attachment }) => {
+        const messageElement = document.createElement('div');
+        const formattedTime = formatTimestamp(timestamp);
+        
+        let messageHTML = `
+          <strong>${msgUsername}:</strong> ${message}
+          <div class="message-timestamp">${formattedTime}</div>
+        `;
+        
+        // Add attachment if present
+        if (attachment) {
+          messageHTML += createAttachmentHTML(attachment);
+        }
+        
+        messageElement.innerHTML = messageHTML;
+        
+        if (msgUsername === username) {
+          messageElement.classList.add('own-message');
+        }
+        
+        fragment.appendChild(messageElement);
+      });
+      
+      // Append all messages at once
+      messagesDiv.appendChild(fragment);
+    }
+  
+    // Function to render DM messages efficiently
+    function renderDmMessages(messages) {
+      const fragment = document.createDocumentFragment();
+      
+      messages.forEach(({ from, to, message, timestamp, attachment }) => {
+        const messageElement = document.createElement('div');
+        const formattedTime = formatTimestamp(timestamp);
+        
+        let messageHTML = `
+          <strong>${from}:</strong> ${message}
+          <div class="message-timestamp">${formattedTime}</div>
+        `;
+        
+        // Add attachment if present
+        if (attachment) {
+          messageHTML += createAttachmentHTML(attachment);
+        }
+        
+        messageElement.innerHTML = messageHTML;
+        
+        if (from === username) {
+          messageElement.classList.add('own-message');
+        }
+        
+        fragment.appendChild(messageElement);
+      });
+      
+      messagesDiv.appendChild(fragment);
+    }
+  
     // Receive server messages
-    socket.on('server message', ({ username: msgUsername, message, timestamp, serverName }) => {
+    socket.on('server message', ({ username: msgUsername, message, timestamp, serverName, attachment }) => {
       // If this server is currently active, display the message
       if (chatMode === 'server' && activeServer === serverName) {
         const messageElement = document.createElement('div');
         const formattedTime = formatTimestamp(timestamp);
-        messageElement.innerHTML = `
+        
+        let messageHTML = `
           <strong>${msgUsername}:</strong> ${message}
           <div class="message-timestamp">${formattedTime}</div>
         `;
+        
+        // Add attachment if present
+        if (attachment) {
+          messageHTML += createAttachmentHTML(attachment);
+        }
+        
+        messageElement.innerHTML = messageHTML;
         
         if (msgUsername === username) {
           messageElement.classList.add('own-message');
         }
         
         messagesDiv.appendChild(messageElement);
-        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        
+        // Check if we need to clean up old messages
+        if (messagesDiv.children.length > MAX_RENDERED_MESSAGES + 20) {
+          // Remove older messages if we've exceeded our limit by a buffer amount
+          while (messagesDiv.children.length > MAX_RENDERED_MESSAGES) {
+            if (messagesDiv.firstChild.className !== 'message-truncation-notice') {
+              messagesDiv.removeChild(messagesDiv.firstChild);
+            } else {
+              // If the first child is the truncation notice, remove the next child
+              if (messagesDiv.children.length > 1) {
+                messagesDiv.removeChild(messagesDiv.children[1]);
+              } else {
+                break;
+              }
+            }
+          }
+          
+          // Update truncation notice
+          let truncationNotice = messagesDiv.querySelector('.message-truncation-notice');
+          if (!truncationNotice) {
+            truncationNotice = document.createElement('div');
+            truncationNotice.className = 'message-truncation-notice';
+            messagesDiv.insertBefore(truncationNotice, messagesDiv.firstChild);
+          }
+          truncationNotice.textContent = 'Older messages are not displayed.';
+        }
+        
+        safeScrollToBottom();
       } 
       // Otherwise mark as unread if it's not our own message
       else if (msgUsername !== username && joinedServers.includes(serverName)) {
         unreadServers[serverName] = true;
         updateServerListUI();
+        
+        // Show notification
+        showNotification(
+          `New message in ${serverName}`,
+          `${msgUsername}: ${message.substring(0, 50)}${message.length > 50 ? '...' : ''}`
+        );
       }
     });
   
     // Receive DM
-    socket.on('dm message', ({ from, to, message, timestamp }) => {
+    socket.on('dm message', ({ from, to, message, timestamp, attachment }) => {
       // If this DM is currently active, display it
       if (chatMode === 'dm' && ((from === activeDm) || (to === activeDm))) {
         const messageElement = document.createElement('div');
         const formattedTime = formatTimestamp(timestamp);
-        messageElement.innerHTML = `
+        
+        let messageHTML = `
           <strong>${from}:</strong> ${message}
           <div class="message-timestamp">${formattedTime}</div>
         `;
+        
+        // Add attachment if present
+        if (attachment) {
+          messageHTML += createAttachmentHTML(attachment);
+        }
+        
+        messageElement.innerHTML = messageHTML;
         
         if (from === username) {
           messageElement.classList.add('own-message');
         }
         
         messagesDiv.appendChild(messageElement);
-        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        
+        // Check if we need to clean up old messages
+        if (messagesDiv.children.length > MAX_RENDERED_MESSAGES + 20) {
+          // Remove older messages if we've exceeded our limit by a buffer amount
+          while (messagesDiv.children.length > MAX_RENDERED_MESSAGES) {
+            if (messagesDiv.firstChild.className !== 'message-truncation-notice') {
+              messagesDiv.removeChild(messagesDiv.firstChild);
+            } else {
+              // If the first child is the truncation notice, remove the next child
+              if (messagesDiv.children.length > 1) {
+                messagesDiv.removeChild(messagesDiv.children[1]);
+              } else {
+                break;
+              }
+            }
+          }
+          
+          // Update truncation notice
+          let truncationNotice = messagesDiv.querySelector('.message-truncation-notice');
+          if (!truncationNotice) {
+            truncationNotice = document.createElement('div');
+            truncationNotice.className = 'message-truncation-notice';
+            messagesDiv.insertBefore(truncationNotice, messagesDiv.firstChild);
+          }
+          truncationNotice.textContent = 'Older messages are not displayed.';
+        }
+        
+        safeScrollToBottom();
       } 
       // Otherwise mark as unread if it's not our own message
       else if (from !== username) {
         unreadDms[from] = true;
         socket.emit('get dms'); // Refresh DM list to show unread badge
+        
+        // Show notification
+        showNotification(
+          `Message from ${from}`,
+          `${message.substring(0, 50)}${message.length > 50 ? '...' : ''}`
+        );
       }
     });
   
     // Handle previous server messages
     socket.on('server messages', (messages) => {
       if (chatMode === 'server') {
-        messagesDiv.innerHTML = ''; 
-        messages.forEach(({ username: msgUsername, message, timestamp }) => {
-          const messageElement = document.createElement('div');
-          const formattedTime = formatTimestamp(timestamp);
-          messageElement.innerHTML = `
-            <strong>${msgUsername}:</strong> ${message}
-            <div class="message-timestamp">${formattedTime}</div>
-          `;
-          
-          if (msgUsername === username) {
-            messageElement.classList.add('own-message');
-          }
-          
-          messagesDiv.appendChild(messageElement);
-        });
-        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        // Clear current messages
+        messagesDiv.innerHTML = '';
+        
+        // Limit number of rendered messages if there are too many
+        const messagesToRender = messages.length > MAX_RENDERED_MESSAGES 
+          ? messages.slice(messages.length - MAX_RENDERED_MESSAGES) 
+          : messages;
+        
+        // Add a notice if messages were truncated
+        if (messages.length > MAX_RENDERED_MESSAGES) {
+          const truncationNotice = document.createElement('div');
+          truncationNotice.className = 'message-truncation-notice';
+          truncationNotice.textContent = `Showing the ${MAX_RENDERED_MESSAGES} most recent messages. ${messages.length - MAX_RENDERED_MESSAGES} older messages are not displayed.`;
+          messagesDiv.appendChild(truncationNotice);
+        }
+        
+        // Render batch of messages
+        renderMessages(messagesToRender);
+        
+        // Scroll to bottom
+        safeScrollToBottom();
       }
     });
   
@@ -641,22 +1025,24 @@ document.addEventListener('DOMContentLoaded', () => {
     socket.on('dm messages', ({ otherUser, messages }) => {
       messagesDiv.innerHTML = '';
       
-      messages.forEach(({ from, to, message, timestamp }) => {
-        const messageElement = document.createElement('div');
-        const formattedTime = formatTimestamp(timestamp);
-        messageElement.innerHTML = `
-          <strong>${from}:</strong> ${message}
-          <div class="message-timestamp">${formattedTime}</div>
-        `;
-        
-        if (from === username) {
-          messageElement.classList.add('own-message');
-        }
-        
-        messagesDiv.appendChild(messageElement);
-      });
+      // Limit number of rendered messages if there are too many
+      const messagesToRender = messages.length > MAX_RENDERED_MESSAGES 
+        ? messages.slice(messages.length - MAX_RENDERED_MESSAGES) 
+        : messages;
       
-      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      // Add truncation notice if needed
+      if (messages.length > MAX_RENDERED_MESSAGES) {
+        const truncationNotice = document.createElement('div');
+        truncationNotice.className = 'message-truncation-notice';
+        truncationNotice.textContent = `Showing the ${MAX_RENDERED_MESSAGES} most recent messages. ${messages.length - MAX_RENDERED_MESSAGES} older messages are not displayed.`;
+        messagesDiv.appendChild(truncationNotice);
+      }
+      
+      // Render batch of messages
+      renderDmMessages(messagesToRender);
+      
+      // Scroll to bottom
+      safeScrollToBottom();
     });
   
     // Update user's DM list

@@ -105,6 +105,7 @@
       <div id="main-content">
         <div id="chat">
           <div id="messages"></div>
+          <div id="attachment-preview" class="hidden"></div>
         </div>
         <div id="people-list">
           <h3>People</h3>
@@ -112,6 +113,10 @@
         </div>
       </div>
       <div id="input-area">
+        <div class="file-input-container">
+          <button class="file-input-button">+</button>
+          <input type="file" id="file-input" class="file-input">
+        </div>
         <input type="text" id="message-input" placeholder="Type a message...">
         <button id="send-button">Send</button>
       </div>
@@ -142,6 +147,15 @@
         <ul id="dm-users-list"></ul>
       </div>
       <button id="dm-modal-close-button">Close</button>
+    </div>
+  </div>
+  
+  <!-- Notification Banner -->
+  <div class="notification-banner hidden" id="notification-banner">
+    <p>Enable notifications to stay updated when you receive new messages.</p>
+    <div class="notification-buttons">
+      <button class="allow-button" id="allow-notifications">Allow</button>
+      <button class="deny-button" id="deny-notifications">Not now</button>
     </div>
   </div>
 

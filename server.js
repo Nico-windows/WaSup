@@ -7,6 +7,7 @@ const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 const dotenv = require('dotenv');
+const multer = require('multer');
 
 // Load environment variables
 dotenv.config();
@@ -16,7 +17,7 @@ const server = http.createServer(app);
 const io = new Server(server);
 
 const PORT = process.env.PORT || 3000;
-const BASE_URL = process.env.BASE_URL || `https://wasup.onrender.com`;
+const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
 
 // Data files
 const DATA_FILE = 'server_data.json';
@@ -36,6 +37,31 @@ let socketToUser = {}; // Maps socket id to username
 let verificationTokens = {}; // Store email verification tokens
 let resetTokens = {}; // Store password reset tokens
 let userActivity = {}; // Track last active server/DM for each user
+
+// Create uploads directory if it doesn't exist
+const uploadsDir = path.join(__dirname, 'public', 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, uploadsDir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    cb(null, uniqueSuffix + ext);
+  }
+});
+
+const upload = multer({ 
+  storage: storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+  }
+});
 
 // Email transporter setup (using environment variables)
 let transporter;
@@ -351,7 +377,7 @@ app.get('/verify-email', (req, res) => {
       </html>
     `);
   } else {
-    res.status(400).send('User not found.');
+    res.status(404).send('User not found.');
   }
 });
 
@@ -535,6 +561,127 @@ app.post('/api/reset-password', async (req, res) => {
   } catch (error) {
     console.error('Error resetting password:', error);
     res.json({ success: false, message: 'An error occurred while resetting your password.' });
+  }
+});
+
+// Add route for file uploads
+app.post('/api/upload', upload.single('file'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file uploaded' });
+  }
+  
+  // Get username from headers
+  const username = req.headers['x-username'] || socketToUser[req.headers['x-socket-id']];
+  
+  if (!username || !users[username]) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  
+  const fileUrl = `/uploads/${req.file.filename}`;
+  const attachment = {
+    filename: req.file.originalname,
+    filesize: req.file.size,
+    fileType: req.file.mimetype,
+    fileUrl: fileUrl
+  };
+  
+  // Handle server or DM message
+  if (req.body.serverName) {
+    // Server message
+    const serverName = req.body.serverName;
+    const message = req.body.message || '';
+    
+    if (!servers[serverName] || !servers[serverName].includes(username)) {
+      return res.status(403).json({ error: 'Not a member of this server' });
+    }
+    
+    if (!messages[serverName]) {
+      messages[serverName] = [];
+    }
+    
+    const timestamp = Date.now();
+    const messageObj = { 
+      username, 
+      message, 
+      timestamp,
+      attachment
+    };
+    
+    messages[serverName].push(messageObj);
+    saveData();
+    
+    const broadcastMessage = { ...messageObj, serverName };
+    
+    // Mark as unread for all users in the server except the sender
+    servers[serverName].forEach(user => {
+      if (user !== username) {
+        if (!unreadServers[user]) {
+          unreadServers[user] = {};
+        }
+        unreadServers[user][serverName] = true;
+      }
+    });
+    
+    saveTokens();
+    
+    // Broadcast to all users in the server
+    io.to(serverName).emit('server message', broadcastMessage);
+    
+    res.json({ success: true });
+    
+  } else if (req.body.to) {
+    // DM message
+    const to = req.body.to;
+    const message = req.body.message || '';
+    
+    if (!users[to]) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const dmKey = getDmKey(username, to);
+    
+    if (!dms[dmKey]) {
+      dms[dmKey] = [];
+    }
+    
+    const timestamp = Date.now();
+    const dmMessage = {
+      from: username,
+      to,
+      message,
+      timestamp,
+      attachment
+    };
+    
+    dms[dmKey].push(dmMessage);
+    
+    // Mark as unread for recipient
+    if (!unreadDms[to]) {
+      unreadDms[to] = {};
+    }
+    unreadDms[to][username] = true;
+    
+    saveDMs();
+    
+    // Find recipient's socket and send the message
+    for (const [socketId, socketUsername] of Object.entries(socketToUser)) {
+      if (socketUsername === username || socketUsername === to) {
+        io.to(socketId).emit('dm message', dmMessage);
+      }
+    }
+    
+    // Update recipient's DM list to show unread
+    for (const [socketId, socketUsername] of Object.entries(socketToUser)) {
+      if (socketUsername === to) {
+        const recipientDms = getUserDms(to);
+        io.to(socketId).emit('user dms', recipientDms);
+      }
+    }
+    
+    res.json({ success: true });
+  } else {
+    // Handle error - missing destination
+    return res.status(400).json({ error: 'Missing destination (serverName or to)' });
   }
 });
 
@@ -966,10 +1113,10 @@ io.on('connection', (socket) => {
     messages[serverName].push(messageObj);
     saveData();
 
-    // Add serverName to the message object for client-side filtering
+    // add serverName to the message object for client-side filtering
     const broadcastMessage = { ...messageObj, serverName };
     
-    // Mark as unread for all users in the server except the sender
+    // mark as unread for all users in the server except the sender
     servers[serverName].forEach(user => {
       if (user !== currentUsername) {
         if (!unreadServers[user]) {
@@ -989,7 +1136,7 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     console.log('User disconnected');
     delete socketToUser[socket.id];
-    // We don't remove the user from servers here as they might reconnect
+    // We don't remove the user from servers here as they might reconnect :)
   });
 });
 
