@@ -11,13 +11,16 @@ Features:
 - Joining and creating servers
 - People tab
 - Saving messages and server
-- Login/ Sign up (WIP, not out yet)
+- Dm's !!! Chat privately with your friends.
+- Login/ Sign up (OUT NOW)
+- Settings tab (WIP)
+- More TBA
 
 I'll update this as I finish features, find my timeline below:
 
-End of feb --> Basic login intergration
-End of march --> Main chat functionality done.
-End of April --> Login page done.
+End of feb --> People Tab (Done in 0.6.5)
+End of march --> Main chat functionality done. (done in - 0.7)
+End of April --> Login page done. (done early - 0.7.6)
 May --> Version 1 + bugs fleshed out.
 
 Keep in mind this is highly WIP and nowhere near done. I plan to offer support and version until around V3 which will bring it until around December of 2025. 
