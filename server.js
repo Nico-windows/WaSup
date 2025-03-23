@@ -1,6 +1,6 @@
 const express = require('express');
 const http = require('http');
-const { Server } = require('socket.io');
+const { Server: SocketIOServer } = require('socket.io');
 const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcrypt');
@@ -8,35 +8,103 @@ const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 const dotenv = require('dotenv');
 const multer = require('multer');
+const mongoose = require('mongoose');
 
 // Load environment variables
 dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = new SocketIOServer(server);
 
 const PORT = process.env.PORT || 3000;
 const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/wasup';
 
-// Data files
-const DATA_FILE = 'server_data.json';
-const USERS_FILE = 'users_data.json';
-const DM_FILE = 'dm_data.json';
-const TOKENS_FILE = 'tokens_data.json';
+// Connect to MongoDB
+mongoose.connect(MONGODB_URI)
+  .then(() => console.log('Connected to MongoDB'))
+  .catch(err => console.error('MongoDB connection error:', err));
 
-// Data storage
-let servers = {};
-let messages = {};
-let users = {};
-let dms = {};  // Format: { "user1-user2": [{from, to, message, timestamp}] }
-let unreadDms = {}; // Format: { "user1": {"user2": true} }
-let unreadServers = {}; // Format: { "username": { "servername": true } }
+// Define MongoDB schemas
+const UserSchema = new mongoose.Schema({
+  username: { type: String, required: true, unique: true },
+  email: { type: String, required: true, unique: true },
+  password: { type: String, required: true },
+  servers: [String],
+  verified: { type: Boolean, default: false }
+});
+
+const ServerSchema = new mongoose.Schema({
+  name: { type: String, required: true, unique: true },
+  users: [String]
+});
+
+const MessageSchema = new mongoose.Schema({
+  serverName: { type: String, required: true },
+  username: { type: String, required: true },
+  message: { type: String },
+  timestamp: { type: Number, default: Date.now },
+  attachment: {
+    filename: String,
+    filesize: Number,
+    fileType: String,
+    fileUrl: String
+  }
+});
+
+const DMSchema = new mongoose.Schema({
+  dmKey: { type: String, required: true, unique: true },
+  messages: [{
+    from: String,
+    to: String,
+    message: String,
+    timestamp: { type: Number, default: Date.now },
+    attachment: {
+      filename: String,
+      filesize: Number,
+      fileType: String,
+      fileUrl: String
+    }
+  }]
+});
+
+const UnreadDMSchema = new mongoose.Schema({
+  username: { type: String, required: true },
+  unreadFrom: { type: Map, of: Boolean, default: new Map() }
+});
+
+const UnreadServerSchema = new mongoose.Schema({
+  username: { type: String, required: true },
+  unreadServers: { type: Map, of: Boolean, default: new Map() }
+});
+
+const TokenSchema = new mongoose.Schema({
+  token: { type: String, required: true, unique: true },
+  username: { type: String, required: true },
+  type: { type: String, enum: ['verification', 'reset'], required: true },
+  expires: { type: Date, default: () => new Date(Date.now() + 24 * 60 * 60 * 1000) }
+});
+
+const UserActivitySchema = new mongoose.Schema({
+  username: { type: String, required: true, unique: true },
+  server: { type: String, default: null },
+  dm: { type: String, default: null }
+});
+
+// Create MongoDB models
+const User = mongoose.model('User', UserSchema);
+const Server = mongoose.model('Server', ServerSchema);
+const Message = mongoose.model('Message', MessageSchema);
+const DM = mongoose.model('DM', DMSchema);
+const UnreadDM = mongoose.model('UnreadDM', UnreadDMSchema);
+const UnreadServer = mongoose.model('UnreadServer', UnreadServerSchema);
+const Token = mongoose.model('Token', TokenSchema);
+const UserActivity = mongoose.model('UserActivity', UserActivitySchema);
+
+// Sessions in-memory (could be moved to Redis for production)
 let sessions = {};
 let socketToUser = {}; // Maps socket id to username
-let verificationTokens = {}; // Store email verification tokens
-let resetTokens = {}; // Store password reset tokens
-let userActivity = {}; // Track last active server/DM for each user
 
 // Create uploads directory if it doesn't exist
 const uploadsDir = path.join(__dirname, 'public', 'uploads');
@@ -78,129 +146,34 @@ try {
   console.error('Failed to configure email transporter:', error);
 }
 
-// Load data from JSON files on startup
-function loadData() {
-  try {
-    if (fs.existsSync(DATA_FILE)) {
-      const data = fs.readFileSync(DATA_FILE, 'utf8');
-      const parsedData = JSON.parse(data);
-      servers = parsedData.servers || {};
-      messages = parsedData.messages || {};
-    } else {
-      servers = {};
-      messages = {};
-      saveData();
-    }
-  } catch (err) {
-    console.log('Error loading server data, starting with empty state:', err);
-    servers = {};
-    messages = {};
-  }
-
-  try {
-    if (fs.existsSync(USERS_FILE)) {
-      const userData = fs.readFileSync(USERS_FILE, 'utf8');
-      users = JSON.parse(userData) || {};
-    } else {
-      users = {};
-      saveUsers();
-    }
-  } catch (err) {
-    console.log('Error loading user data, starting with empty state:', err);
-    users = {};
-  }
-
-  try {
-    if (fs.existsSync(DM_FILE)) {
-      const dmData = fs.readFileSync(DM_FILE, 'utf8');
-      const parsedData = JSON.parse(dmData);
-      dms = parsedData.dms || {};
-      unreadDms = parsedData.unreadDms || {};
-    } else {
-      dms = {};
-      unreadDms = {};
-      saveDMs();
-    }
-  } catch (err) {
-    console.log('Error loading DM data, starting with empty state:', err);
-    dms = {};
-    unreadDms = {};
-  }
-
-  try {
-    if (fs.existsSync(TOKENS_FILE)) {
-      const tokensData = fs.readFileSync(TOKENS_FILE, 'utf8');
-      const parsedData = JSON.parse(tokensData);
-      verificationTokens = parsedData.verificationTokens || {};
-      resetTokens = parsedData.resetTokens || {};
-      userActivity = parsedData.userActivity || {};
-      unreadServers = parsedData.unreadServers || {};
-    } else {
-      verificationTokens = {};
-      resetTokens = {};
-      userActivity = {};
-      unreadServers = {};
-      saveTokens();
-    }
-  } catch (err) {
-    console.log('Error loading tokens data, starting with empty state:', err);
-    verificationTokens = {};
-    resetTokens = {};
-    userActivity = {};
-    unreadServers = {};
-  }
-}
-
-// Load data on startup
-loadData();
-
-// Save functions
-function saveData() {
-  const dataToSave = { servers, messages };
-  fs.writeFileSync(DATA_FILE, JSON.stringify(dataToSave, null, 2), 'utf8');
-}
-
-function saveUsers() {
-  fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), 'utf8');
-}
-
-function saveDMs() {
-  const dataToSave = { dms, unreadDms };
-  fs.writeFileSync(DM_FILE, JSON.stringify(dataToSave, null, 2), 'utf8');
-}
-
-function saveTokens() {
-  const dataToSave = { 
-    verificationTokens, 
-    resetTokens,
-    userActivity,
-    unreadServers
-  };
-  fs.writeFileSync(TOKENS_FILE, JSON.stringify(dataToSave, null, 2), 'utf8');
-}
-
 // Helper functions for DMs
 function getDmKey(user1, user2) {
   return [user1, user2].sort().join('-');
 }
 
-function getUserDms(username) {
-  const userDms = [];
-  
-  // Get list of all DM conversations this user is part of
-  Object.keys(dms).forEach(dmKey => {
-    const [user1, user2] = dmKey.split('-');
-    if (user1 === username || user2 === username) {
+// Get user's DM conversations
+async function getUserDms(username) {
+  try {
+    // Find all DM keys that include this user
+    const dmKeys = await DM.find({ dmKey: { $regex: username } }).select('dmKey');
+    const userDms = [];
+    
+    for (const dm of dmKeys) {
+      const [user1, user2] = dm.dmKey.split('-');
       const otherUser = user1 === username ? user2 : user1;
       
       // Check if there are unread messages
-      const hasUnread = unreadDms[username] && unreadDms[username][otherUser];
+      const unreadData = await UnreadDM.findOne({ username });
+      const hasUnread = unreadData && unreadData.unreadFrom.get(otherUser);
       
-      userDms.push({ user: otherUser, hasUnread });
+      userDms.push({ user: otherUser, hasUnread: hasUnread || false });
     }
-  });
-  
-  return userDms;
+    
+    return userDms;
+  } catch (error) {
+    console.error('Error getting user DMs:', error);
+    return [];
+  }
 }
 
 // Generate random token
@@ -293,39 +266,117 @@ function sendPasswordResetEmail(email, token) {
 }
 
 // Find username by email
-function getUsernameByEmail(email) {
-  for (const [username, userData] of Object.entries(users)) {
-    if (userData.email === email) {
-      return username;
-    }
+async function getUsernameByEmail(email) {
+  try {
+    const user = await User.findOne({ email });
+    return user ? user.username : null;
+  } catch (error) {
+    console.error('Error finding user by email:', error);
+    return null;
   }
-  return null;
 }
 
 // Serve static files
 app.use(express.static('public'));
 
 // Routes for email verification and password reset
-app.get('/verify-email', (req, res) => {
-  const token = req.query.token;
+app.get('/verify-email', async (req, res) => {
+  const tokenValue = req.query.token;
   
-  if (!token || !verificationTokens[token]) {
-    return res.status(400).send('Invalid or expired verification token.');
-  }
-  
-  const username = verificationTokens[token];
-  
-  if (users[username]) {
-    users[username].verified = true;
-    delete verificationTokens[token];
+  try {
+    const token = await Token.findOne({ token: tokenValue, type: 'verification' });
     
-    saveUsers();
-    saveTokens();
+    if (!token || token.expires < new Date()) {
+      return res.status(400).send('Invalid or expired verification token.');
+    }
+    
+    const username = token.username;
+    const user = await User.findOne({ username });
+    
+    if (user) {
+      user.verified = true;
+      await user.save();
+      
+      // Delete the token
+      await Token.deleteOne({ _id: token._id });
+      
+      res.send(`
+        <html>
+        <head>
+          <title>Email Verified</title>
+          <style>
+            body {
+              font-family: 'Roboto', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+              background-color: #2c2f33;
+              color: #ffffff;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              height: 100vh;
+              margin: 0;
+            }
+            .container {
+              background-color: #36393f;
+              padding: 30px;
+              border-radius: 10px;
+              text-align: center;
+              width: 400px;
+              box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            }
+            h1 {
+              color: #7289da;
+            }
+            p {
+              margin: 20px 0;
+              line-height: 1.5;
+            }
+            .button {
+              background-color: #5865f2;
+              color: white;
+              padding: 10px 20px;
+              border-radius: 5px;
+              text-decoration: none;
+              font-weight: bold;
+              display: inline-block;
+              margin-top: 15px;
+            }
+            .button:hover {
+              background-color: #4e5bbf;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <h1>Email Verified!</h1>
+            <p>Your email has been successfully verified. You can now log in to your WaSup account.</p>
+            <a href="/" class="button">Go to Login</a>
+          </div>
+        </body>
+        </html>
+      `);
+    } else {
+      res.status(404).send('User not found.');
+    }
+  } catch (error) {
+    console.error('Error verifying email:', error);
+    res.status(500).send('An error occurred while verifying your email.');
+  }
+});
+
+app.get('/reset-password', async (req, res) => {
+  const tokenValue = req.query.token;
+  
+  try {
+    const token = await Token.findOne({ token: tokenValue, type: 'reset' });
+    
+    if (!token || token.expires < new Date()) {
+      return res.status(400).send('Invalid or expired reset token.');
+    }
     
     res.send(`
       <html>
       <head>
-        <title>Email Verified</title>
+        <title>Reset Password</title>
         <style>
           body {
             font-family: 'Roboto', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -341,26 +392,54 @@ app.get('/verify-email', (req, res) => {
             background-color: #36393f;
             padding: 30px;
             border-radius: 10px;
-            text-align: center;
             width: 400px;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
           }
           h1 {
             color: #7289da;
+            text-align: center;
           }
-          p {
-            margin: 20px 0;
-            line-height: 1.5;
+          .input-group {
+            margin-bottom: 15px;
+          }
+          label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #b9bbbe;
+          }
+          input {
+            width: 100%;
+            padding: 12px;
+            background-color: #202225;
+            border: 1px solid #4f545c;
+            border-radius: 5px;
+            color: white;
+            font-size: 16px;
+            box-sizing: border-box;
+          }
+          .error {
+            color: #f04747;
+            margin-top: 5px;
+            display: none;
+          }
+          .success {
+            color: #43b581;
+            margin-top: 10px;
+            text-align: center;
+            display: none;
           }
           .button {
             background-color: #5865f2;
             color: white;
-            padding: 10px 20px;
+            padding: 12px;
+            border: none;
             border-radius: 5px;
-            text-decoration: none;
             font-weight: bold;
-            display: inline-block;
-            margin-top: 15px;
+            font-size: 16px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 20px;
           }
           .button:hover {
             background-color: #4e5bbf;
@@ -369,193 +448,108 @@ app.get('/verify-email', (req, res) => {
       </head>
       <body>
         <div class="container">
-          <h1>Email Verified!</h1>
-          <p>Your email has been successfully verified. You can now log in to your WaSup account.</p>
-          <a href="/" class="button">Go to Login</a>
+          <h1>Reset Your Password</h1>
+          <form id="resetForm">
+            <input type="hidden" id="token" value="${tokenValue}">
+            <div class="input-group">
+              <label for="password">New Password</label>
+              <input type="password" id="password" required>
+            </div>
+            <div class="input-group">
+              <label for="confirmPassword">Confirm New Password</label>
+              <input type="password" id="confirmPassword" required>
+              <div class="error" id="passwordError">Passwords do not match</div>
+            </div>
+            <div class="success" id="resetSuccess">Your password has been reset successfully! You can now login with your new password.</div>
+            <button type="submit" class="button">Reset Password</button>
+          </form>
         </div>
+        
+        <script>
+          document.getElementById('resetForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            const token = document.getElementById('token').value;
+            const passwordError = document.getElementById('passwordError');
+            const resetSuccess = document.getElementById('resetSuccess');
+            
+            // Validate passwords match
+            if (password !== confirmPassword) {
+              passwordError.style.display = 'block';
+              return;
+            }
+            
+            passwordError.style.display = 'none';
+            
+            try {
+              const response = await fetch('/api/reset-password', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ token, password })
+              });
+              
+              const data = await response.json();
+              
+              if (data.success) {
+                resetSuccess.style.display = 'block';
+                document.getElementById('resetForm').reset();
+                
+                // Redirect to login page after 3 seconds
+                setTimeout(() => {
+                  window.location.href = '/';
+                }, 3000);
+              } else {
+                alert(data.message || 'An error occurred. Please try again.');
+              }
+            } catch (error) {
+              alert('An error occurred. Please try again.');
+              console.error('Error:', error);
+            }
+          });
+        </script>
       </body>
       </html>
     `);
-  } else {
-    res.status(404).send('User not found.');
+  } catch (error) {
+    console.error('Error loading reset password page:', error);
+    res.status(500).send('An error occurred. Please try again later.');
   }
-});
-
-app.get('/reset-password', (req, res) => {
-  const token = req.query.token;
-  
-  if (!token || !resetTokens[token]) {
-    return res.status(400).send('Invalid or expired reset token.');
-  }
-  
-  res.send(`
-    <html>
-    <head>
-      <title>Reset Password</title>
-      <style>
-        body {
-          font-family: 'Roboto', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-          background-color: #2c2f33;
-          color: #ffffff;
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          height: 100vh;
-          margin: 0;
-        }
-        .container {
-          background-color: #36393f;
-          padding: 30px;
-          border-radius: 10px;
-          width: 400px;
-          box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-        }
-        h1 {
-          color: #7289da;
-          text-align: center;
-        }
-        .input-group {
-          margin-bottom: 15px;
-        }
-        label {
-          display: block;
-          margin-bottom: 5px;
-          font-weight: bold;
-          color: #b9bbbe;
-        }
-        input {
-          width: 100%;
-          padding: 12px;
-          background-color: #202225;
-          border: 1px solid #4f545c;
-          border-radius: 5px;
-          color: white;
-          font-size: 16px;
-          box-sizing: border-box;
-        }
-        .error {
-          color: #f04747;
-          margin-top: 5px;
-          display: none;
-        }
-        .success {
-          color: #43b581;
-          margin-top: 10px;
-          text-align: center;
-          display: none;
-        }
-        .button {
-          background-color: #5865f2;
-          color: white;
-          padding: 12px;
-          border: none;
-          border-radius: 5px;
-          font-weight: bold;
-          font-size: 16px;
-          cursor: pointer;
-          width: 100%;
-          margin-top: 20px;
-        }
-        .button:hover {
-          background-color: #4e5bbf;
-        }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <h1>Reset Your Password</h1>
-        <form id="resetForm">
-          <input type="hidden" id="token" value="${token}">
-          <div class="input-group">
-            <label for="password">New Password</label>
-            <input type="password" id="password" required>
-          </div>
-          <div class="input-group">
-            <label for="confirmPassword">Confirm New Password</label>
-            <input type="password" id="confirmPassword" required>
-            <div class="error" id="passwordError">Passwords do not match</div>
-          </div>
-          <div class="success" id="resetSuccess">Your password has been reset successfully! You can now login with your new password.</div>
-          <button type="submit" class="button">Reset Password</button>
-        </form>
-      </div>
-      
-      <script>
-        document.getElementById('resetForm').addEventListener('submit', async function(e) {
-          e.preventDefault();
-          
-          const password = document.getElementById('password').value;
-          const confirmPassword = document.getElementById('confirmPassword').value;
-          const token = document.getElementById('token').value;
-          const passwordError = document.getElementById('passwordError');
-          const resetSuccess = document.getElementById('resetSuccess');
-          
-          // Validate passwords match
-          if (password !== confirmPassword) {
-            passwordError.style.display = 'block';
-            return;
-          }
-          
-          passwordError.style.display = 'none';
-          
-          try {
-            const response = await fetch('/api/reset-password', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({ token, password })
-            });
-            
-            const data = await response.json();
-            
-            if (data.success) {
-              resetSuccess.style.display = 'block';
-              document.getElementById('resetForm').reset();
-              
-              // Redirect to login page after 3 seconds
-              setTimeout(() => {
-                window.location.href = '/';
-              }, 3000);
-            } else {
-              alert(data.message || 'An error occurred. Please try again.');
-            }
-          } catch (error) {
-            alert('An error occurred. Please try again.');
-            console.error('Error:', error);
-          }
-        });
-      </script>
-    </body>
-    </html>
-  `);
 });
 
 // API route for password reset
 app.use(express.json());
 
 app.post('/api/reset-password', async (req, res) => {
-  const { token, password } = req.body;
-  
-  if (!token || !resetTokens[token]) {
-    return res.json({ success: false, message: 'Invalid or expired reset token.' });
-  }
-  
-  const username = resetTokens[token];
+  const { token: tokenValue, password } = req.body;
   
   try {
+    const token = await Token.findOne({ token: tokenValue, type: 'reset' });
+    
+    if (!token || token.expires < new Date()) {
+      return res.json({ success: false, message: 'Invalid or expired reset token.' });
+    }
+    
+    const username = token.username;
+    const user = await User.findOne({ username });
+    
+    if (!user) {
+      return res.json({ success: false, message: 'User not found.' });
+    }
+    
     // Hash the new password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
     
     // Update user's password
-    users[username].password = hashedPassword;
+    user.password = hashedPassword;
+    await user.save();
     
     // Delete the reset token
-    delete resetTokens[token];
-    
-    saveUsers();
-    saveTokens();
+    await Token.deleteOne({ _id: token._id });
     
     res.json({ success: true });
   } catch (error) {
@@ -565,7 +559,7 @@ app.post('/api/reset-password', async (req, res) => {
 });
 
 // Add route for file uploads
-app.post('/api/upload', upload.single('file'), (req, res) => {
+app.post('/api/upload', upload.single('file'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No file uploaded' });
   }
@@ -573,115 +567,131 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
   // Get username from headers
   const username = req.headers['x-username'] || socketToUser[req.headers['x-socket-id']];
   
-  if (!username || !users[username]) {
+  if (!username) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
   
-  const fileUrl = `/uploads/${req.file.filename}`;
-  const attachment = {
-    filename: req.file.originalname,
-    filesize: req.file.size,
-    fileType: req.file.mimetype,
-    fileUrl: fileUrl
-  };
-  
-  // Handle server or DM message
-  if (req.body.serverName) {
-    // Server message
-    const serverName = req.body.serverName;
-    const message = req.body.message || '';
+  try {
+    const user = await User.findOne({ username });
     
-    if (!servers[serverName] || !servers[serverName].includes(username)) {
-      return res.status(403).json({ error: 'Not a member of this server' });
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized' });
     }
     
-    if (!messages[serverName]) {
-      messages[serverName] = [];
-    }
-    
-    const timestamp = Date.now();
-    const messageObj = { 
-      username, 
-      message, 
-      timestamp,
-      attachment
+    const fileUrl = `/uploads/${req.file.filename}`;
+    const attachment = {
+      filename: req.file.originalname,
+      filesize: req.file.size,
+      fileType: req.file.mimetype,
+      fileUrl: fileUrl
     };
     
-    messages[serverName].push(messageObj);
-    saveData();
-    
-    const broadcastMessage = { ...messageObj, serverName };
-    
-    // Mark as unread for all users in the server except the sender
-    servers[serverName].forEach(user => {
-      if (user !== username) {
-        if (!unreadServers[user]) {
-          unreadServers[user] = {};
+    // Handle server or DM message
+    if (req.body.serverName) {
+      // Server message
+      const serverName = req.body.serverName;
+      const message = req.body.message || '';
+      
+      const server = await Server.findOne({ name: serverName });
+      
+      if (!server || !server.users.includes(username)) {
+        return res.status(403).json({ error: 'Not a member of this server' });
+      }
+      
+      const timestamp = Date.now();
+      const messageObj = { serverName, username, message, timestamp, attachment };
+      
+      // Save message to database
+      const newMessage = new Message(messageObj);
+      await newMessage.save();
+      
+      const broadcastMessage = { username, message, timestamp, serverName, attachment };
+      
+      // Mark as unread for all users in the server except the sender
+      for (const user of server.users) {
+        if (user !== username) {
+          let unreadServer = await UnreadServer.findOne({ username: user });
+          
+          if (!unreadServer) {
+            unreadServer = new UnreadServer({ username: user });
+          }
+          
+          unreadServer.unreadServers.set(serverName, true);
+          await unreadServer.save();
         }
-        unreadServers[user][serverName] = true;
       }
-    });
-    
-    saveTokens();
-    
-    // Broadcast to all users in the server
-    io.to(serverName).emit('server message', broadcastMessage);
-    
-    res.json({ success: true });
-    
-  } else if (req.body.to) {
-    // DM message
-    const to = req.body.to;
-    const message = req.body.message || '';
-    
-    if (!users[to]) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-    
-    const dmKey = getDmKey(username, to);
-    
-    if (!dms[dmKey]) {
-      dms[dmKey] = [];
-    }
-    
-    const timestamp = Date.now();
-    const dmMessage = {
-      from: username,
-      to,
-      message,
-      timestamp,
-      attachment
-    };
-    
-    dms[dmKey].push(dmMessage);
-    
-    // Mark as unread for recipient
-    if (!unreadDms[to]) {
-      unreadDms[to] = {};
-    }
-    unreadDms[to][username] = true;
-    
-    saveDMs();
-    
-    // Find recipient's socket and send the message
-    for (const [socketId, socketUsername] of Object.entries(socketToUser)) {
-      if (socketUsername === username || socketUsername === to) {
-        io.to(socketId).emit('dm message', dmMessage);
+      
+      // Broadcast to all users in the server
+      io.to(serverName).emit('server message', broadcastMessage);
+      
+      res.json({ success: true });
+      
+    } else if (req.body.to) {
+      // DM message
+      const to = req.body.to;
+      const message = req.body.message || '';
+      
+      const recipient = await User.findOne({ username: to });
+      
+      if (!recipient) {
+        return res.status(404).json({ error: 'User not found' });
       }
-    }
-    
-    // Update recipient's DM list to show unread
-    for (const [socketId, socketUsername] of Object.entries(socketToUser)) {
-      if (socketUsername === to) {
-        const recipientDms = getUserDms(to);
-        io.to(socketId).emit('user dms', recipientDms);
+      
+      const dmKey = getDmKey(username, to);
+      
+      // Find or create DM conversation
+      let dmConversation = await DM.findOne({ dmKey });
+      
+      if (!dmConversation) {
+        dmConversation = new DM({ dmKey, messages: [] });
       }
+      
+      const timestamp = Date.now();
+      const dmMessage = {
+        from: username,
+        to,
+        message,
+        timestamp,
+        attachment
+      };
+      
+      // Add message to conversation
+      dmConversation.messages.push(dmMessage);
+      await dmConversation.save();
+      
+      // Mark as unread for recipient
+      let unreadDm = await UnreadDM.findOne({ username: to });
+      
+      if (!unreadDm) {
+        unreadDm = new UnreadDM({ username: to });
+      }
+      
+      unreadDm.unreadFrom.set(username, true);
+      await unreadDm.save();
+      
+      // Find recipient's socket and send the message
+      for (const [socketId, socketUsername] of Object.entries(socketToUser)) {
+        if (socketUsername === username || socketUsername === to) {
+          io.to(socketId).emit('dm message', dmMessage);
+        }
+      }
+      
+      // Update recipient's DM list to show unread
+      for (const [socketId, socketUsername] of Object.entries(socketToUser)) {
+        if (socketUsername === to) {
+          const recipientDms = await getUserDms(to);
+          io.to(socketId).emit('user dms', recipientDms);
+        }
+      }
+      
+      res.json({ success: true });
+    } else {
+      // Handle error - missing destination
+      return res.status(400).json({ error: 'Missing destination (serverName or to)' });
     }
-    
-    res.json({ success: true });
-  } else {
-    // Handle error - missing destination
-    return res.status(400).json({ error: 'Missing destination (serverName or to)' });
+  } catch (error) {
+    console.error('Error handling file upload:', error);
+    res.status(500).json({ error: 'Server error while processing upload' });
   }
 });
 
@@ -693,46 +703,55 @@ io.on('connection', (socket) => {
   
   // Handle signup
   socket.on('signup', async ({ username, email, password }) => {
-    // Check if username already exists
-    if (users[username]) {
-      socket.emit('auth error', { type: 'signup', message: 'Username already taken' });
-      return;
-    }
-    
-    // Check if email already exists
-    for (const userData of Object.values(users)) {
-      if (userData.email === email) {
+    try {
+      // Check if username already exists
+      const existingUsername = await User.findOne({ username });
+      if (existingUsername) {
+        socket.emit('auth error', { type: 'signup', message: 'Username already taken' });
+        return;
+      }
+      
+      // Check if email already exists
+      const existingEmail = await User.findOne({ email });
+      if (existingEmail) {
         socket.emit('auth error', { type: 'signup', message: 'Email already in use' });
         return;
       }
-    }
-    
-    try {
+      
       // Hash the password
       const salt = await bcrypt.genSalt(10);
       const hashedPassword = await bcrypt.hash(password, salt);
       
       // Create the user
-      users[username] = {
+      const newUser = new User({
         username,
         email,
         password: hashedPassword,
         servers: [],
         verified: false
-      };
+      });
       
-      // Initialize unread DMs for this user
-      unreadDms[username] = {};
-      unreadServers[username] = {};
+      await newUser.save();
+      
+      // Create unread DMs document for this user
+      const unreadDm = new UnreadDM({ username });
+      await unreadDm.save();
+      
+      // Create unread servers document for this user
+      const unreadServer = new UnreadServer({ username });
+      await unreadServer.save();
       
       // Generate verification token
       const verificationToken = generateToken();
-      verificationTokens[verificationToken] = username;
       
-      // Save all data
-      saveUsers();
-      saveDMs();
-      saveTokens();
+      // Save verification token
+      const token = new Token({
+        token: verificationToken,
+        username,
+        type: 'verification'
+      });
+      
+      await token.save();
       
       // Send verification email
       try {
@@ -741,8 +760,8 @@ io.on('connection', (socket) => {
         } else {
           console.warn('Skipping verification email - email service not configured');
           // Auto-verify user for testing if email is not set up
-          users[username].verified = true;
-          saveUsers();
+          newUser.verified = true;
+          await newUser.save();
         }
       } catch (emailError) {
         console.error('Failed to send verification email:', emailError);
@@ -760,15 +779,17 @@ io.on('connection', (socket) => {
   
   // Handle login
   socket.on('login', async ({ username, password }) => {
-    // Check if user exists
-    if (!users[username]) {
-      socket.emit('auth error', { type: 'login', message: 'Invalid username or password' });
-      return;
-    }
-    
     try {
+      // Check if user exists
+      const user = await User.findOne({ username });
+      
+      if (!user) {
+        socket.emit('auth error', { type: 'login', message: 'Invalid username or password' });
+        return;
+      }
+      
       // Verify password
-      const isMatch = await bcrypt.compare(password, users[username].password);
+      const isMatch = await bcrypt.compare(password, user.password);
       
       if (!isMatch) {
         socket.emit('auth error', { type: 'login', message: 'Invalid username or password' });
@@ -776,7 +797,7 @@ io.on('connection', (socket) => {
       }
       
       // Check if user is verified
-      if (!users[username].verified) {
+      if (!user.verified) {
         socket.emit('auth error', { type: 'login', message: 'Please verify your email first' });
         return;
       }
@@ -790,7 +811,10 @@ io.on('connection', (socket) => {
       socketToUser[socket.id] = username;
       
       // Get user's last activity
-      const lastActivity = userActivity[username] || { server: null, dm: null };
+      let userActivityDoc = await UserActivity.findOne({ username });
+      const lastActivity = userActivityDoc ? 
+        { server: userActivityDoc.server, dm: userActivityDoc.dm } : 
+        { server: null, dm: null };
       
       // Emit auth success event
       socket.emit('auth success', { username, lastActivity });
@@ -808,10 +832,17 @@ io.on('connection', (socket) => {
       currentUsername = username;
       socketToUser[socket.id] = username;
       
-      // Get user's last activity
-      const lastActivity = userActivity[username] || { server: null, dm: null };
-      
-      socket.emit('auth success', { username, lastActivity });
+      // Get user's last activity asynchronously
+      UserActivity.findOne({ username }).then(userActivity => {
+        const lastActivity = userActivity ? 
+          { server: userActivity.server, dm: userActivity.dm } : 
+          { server: null, dm: null };
+        
+        socket.emit('auth success', { username, lastActivity });
+      }).catch(err => {
+        console.error('Error getting user activity:', err);
+        socket.emit('auth success', { username, lastActivity: { server: null, dm: null } });
+      });
     } else {
       socket.emit('clear token');
     }
@@ -819,23 +850,29 @@ io.on('connection', (socket) => {
   
   // Handle password reset request
   socket.on('request password reset', async ({ email }) => {
-    const username = getUsernameByEmail(email);
-    
-    if (!username) {
-      socket.emit('auth error', { 
-        type: 'reset', 
-        message: 'If this email is registered, you will receive a password reset link' 
-      });
-      socket.emit('reset initiated');
-      return;
-    }
-    
     try {
+      const username = await getUsernameByEmail(email);
+      
+      if (!username) {
+        socket.emit('auth error', { 
+          type: 'reset', 
+          message: 'If this email is registered, you will receive a password reset link' 
+        });
+        socket.emit('reset initiated');
+        return;
+      }
+      
       // Generate reset token
       const resetToken = generateToken();
-      resetTokens[resetToken] = username;
       
-      saveTokens();
+      // Save reset token
+      const token = new Token({
+        token: resetToken,
+        username,
+        type: 'reset'
+      });
+      
+      await token.save();
       
       // Send password reset email
       if (transporter) {
@@ -856,51 +893,108 @@ io.on('connection', (socket) => {
   });
   
   // Update last activity
-  socket.on('update last activity', ({ server, dm }) => {
+  socket.on('update last activity', async ({ server, dm }) => {
     if (!currentUsername) return;
     
-    userActivity[currentUsername] = { server, dm };
-    saveTokens();
+    try {
+      let userActivity = await UserActivity.findOne({ username: currentUsername });
+      
+      if (!userActivity) {
+        userActivity = new UserActivity({ 
+          username: currentUsername,
+          server,
+          dm
+        });
+      } else {
+        userActivity.server = server;
+        userActivity.dm = dm;
+      }
+      
+      await userActivity.save();
+    } catch (error) {
+      console.error('Error updating user activity:', error);
+    }
   });
   
   // Get user's joined servers with unread status
-  socket.on('get user servers', () => {
-    if (!currentUsername || !users[currentUsername]) return;
+  socket.on('get user servers', async () => {
+    if (!currentUsername) return;
     
-    const userServers = users[currentUsername].servers || [];
-    const userUnreadServers = unreadServers[currentUsername] || {};
-    
-    socket.emit('user servers data', {
-      servers: userServers,
-      unreadServers: userUnreadServers
-    });
+    try {
+      const user = await User.findOne({ username: currentUsername });
+      
+      if (!user) return;
+      
+      const userServers = user.servers || [];
+      
+      // Get unread servers status
+      const unreadData = await UnreadServer.findOne({ username: currentUsername });
+      let userUnreadServers = {};
+      
+      if (unreadData && unreadData.unreadServers) {
+        // Convert Map to object for sending to client
+        for (const [server, value] of unreadData.unreadServers.entries()) {
+          if (value) {
+            userUnreadServers[server] = true;
+          }
+        }
+      }
+      
+      socket.emit('user servers data', {
+        servers: userServers,
+        unreadServers: userUnreadServers
+      });
+    } catch (error) {
+      console.error('Error getting user servers:', error);
+    }
   });
   
   // Get server messages
-  socket.on('get server messages', ({ serverName }) => {
+  socket.on('get server messages', async ({ serverName }) => {
     if (!currentUsername) return;
     
-    if (servers[serverName]) {
-      socket.emit('server messages', messages[serverName] || []);
+    try {
+      const server = await Server.findOne({ name: serverName });
+      
+      if (server) {
+        const serverMessages = await Message.find({ serverName })
+          .sort({ timestamp: 1 });
+        
+        socket.emit('server messages', serverMessages);
+      }
+    } catch (error) {
+      console.error('Error getting server messages:', error);
     }
   });
   
   // Get server users
-  socket.on('get server users', ({ serverName }) => {
+  socket.on('get server users', async ({ serverName }) => {
     if (!currentUsername) return;
     
-    if (servers[serverName]) {
-      socket.emit('server users', servers[serverName] || []);
+    try {
+      const server = await Server.findOne({ name: serverName });
+      
+      if (server) {
+        socket.emit('server users', server.users);
+      }
+    } catch (error) {
+      console.error('Error getting server users:', error);
     }
   });
   
   // Mark server as read
-  socket.on('mark server read', ({ serverName }) => {
+  socket.on('mark server read', async ({ serverName }) => {
     if (!currentUsername) return;
     
-    if (unreadServers[currentUsername] && unreadServers[currentUsername][serverName]) {
-      delete unreadServers[currentUsername][serverName];
-      saveTokens();
+    try {
+      const unreadServer = await UnreadServer.findOne({ username: currentUsername });
+      
+      if (unreadServer && unreadServer.unreadServers.get(serverName)) {
+        unreadServer.unreadServers.delete(serverName);
+        await unreadServer.save();
+      }
+    } catch (error) {
+      console.error('Error marking server as read:', error);
     }
   });
   
@@ -922,221 +1016,291 @@ io.on('connection', (socket) => {
   });
   
   // Get DMs
-  socket.on('get dms', () => {
+  socket.on('get dms', async () => {
     if (currentUsername) {
-      const userDms = getUserDms(currentUsername);
-      socket.emit('user dms', userDms);
+      try {
+        const userDms = await getUserDms(currentUsername);
+        socket.emit('user dms', userDms);
+      } catch (error) {
+        console.error('Error getting user DMs:', error);
+      }
     }
   });
   
   // Get all users for DM
-  socket.on('get all users', () => {
+  socket.on('get all users', async () => {
     if (currentUsername) {
-      socket.emit('all users', Object.keys(users));
+      try {
+        const allUsers = await User.find().select('username');
+        const usernames = allUsers.map(user => user.username);
+        socket.emit('all users', usernames);
+      } catch (error) {
+        console.error('Error getting all users:', error);
+      }
     }
   });
   
   // Get DM messages
-  socket.on('get dm messages', ({ otherUser }) => {
+  socket.on('get dm messages', async ({ otherUser }) => {
     if (!currentUsername) return;
     
-    const dmKey = getDmKey(currentUsername, otherUser);
-    
-    // Create conversation if it doesn't exist
-    if (!dms[dmKey]) {
-      dms[dmKey] = [];
-      saveDMs();
+    try {
+      const dmKey = getDmKey(currentUsername, otherUser);
+      
+      // Find or create DM conversation
+      let dmConversation = await DM.findOne({ dmKey });
+      
+      if (!dmConversation) {
+        dmConversation = new DM({ dmKey, messages: [] });
+        await dmConversation.save();
+      }
+      
+      // Mark messages as read
+      const unreadDm = await UnreadDM.findOne({ username: currentUsername });
+      
+      if (unreadDm && unreadDm.unreadFrom.get(otherUser)) {
+        unreadDm.unreadFrom.delete(otherUser);
+        await unreadDm.save();
+      }
+      
+      socket.emit('dm messages', { 
+        otherUser, 
+        messages: dmConversation.messages 
+      });
+      
+      // Update DM list to reflect read status
+      const userDms = await getUserDms(currentUsername);
+      socket.emit('user dms', userDms);
+    } catch (error) {
+      console.error('Error getting DM messages:', error);
     }
-    
-    // Mark messages as read
-    if (unreadDms[currentUsername] && unreadDms[currentUsername][otherUser]) {
-      delete unreadDms[currentUsername][otherUser];
-      saveDMs();
-    }
-    
-    socket.emit('dm messages', { 
-      otherUser, 
-      messages: dms[dmKey] 
-    });
-    
-    // Update DM list to reflect read status
-    const userDms = getUserDms(currentUsername);
-    socket.emit('user dms', userDms);
   });
   
   // Mark DM as read
-  socket.on('mark dm read', ({ otherUser }) => {
+  socket.on('mark dm read', async ({ otherUser }) => {
     if (!currentUsername) return;
     
-    if (unreadDms[currentUsername] && unreadDms[currentUsername][otherUser]) {
-      delete unreadDms[currentUsername][otherUser];
-      saveDMs();
+    try {
+      const unreadDm = await UnreadDM.findOne({ username: currentUsername });
       
-      // Update DM list
-      const userDms = getUserDms(currentUsername);
-      socket.emit('user dms', userDms);
+      if (unreadDm && unreadDm.unreadFrom.get(otherUser)) {
+        unreadDm.unreadFrom.delete(otherUser);
+        await unreadDm.save();
+        
+        // Update DM list
+        const userDms = await getUserDms(currentUsername);
+        socket.emit('user dms', userDms);
+      }
+    } catch (error) {
+      console.error('Error marking DM as read:', error);
     }
   });
   
   // Send DM
-  socket.on('dm message', ({ to, message }) => {
+  socket.on('dm message', async ({ to, message }) => {
     if (!currentUsername) return;
     
-    const dmKey = getDmKey(currentUsername, to);
-    
-    // Create conversation if it doesn't exist
-    if (!dms[dmKey]) {
-      dms[dmKey] = [];
-    }
-    
-    // Add message to conversation
-    const timestamp = Date.now();
-    const dmMessage = {
-      from: currentUsername,
-      to,
-      message,
-      timestamp
-    };
-    
-    dms[dmKey].push(dmMessage);
-    
-    // Mark as unread for recipient
-    if (!unreadDms[to]) {
-      unreadDms[to] = {};
-    }
-    unreadDms[to][currentUsername] = true;
-    
-    saveDMs();
-    
-    // Send to both sender and recipient
-    socket.emit('dm message', dmMessage);
-    
-    // Find recipient's socket and send the message
-    for (const [socketId, username] of Object.entries(socketToUser)) {
-      if (username === to) {
-        io.to(socketId).emit('dm message', dmMessage);
-        
-        // Update recipient's DM list to show unread
-        const recipientDms = getUserDms(to);
-        io.to(socketId).emit('user dms', recipientDms);
+    try {
+      const dmKey = getDmKey(currentUsername, to);
+      
+      // Create conversation if it doesn't exist
+      let dmConversation = await DM.findOne({ dmKey });
+      
+      if (!dmConversation) {
+        dmConversation = new DM({ dmKey, messages: [] });
       }
+      
+      // Add message to conversation
+      const timestamp = Date.now();
+      const dmMessage = {
+        from: currentUsername,
+        to,
+        message,
+        timestamp
+      };
+      
+      dmConversation.messages.push(dmMessage);
+      await dmConversation.save();
+      
+      // Mark as unread for recipient
+      let unreadDm = await UnreadDM.findOne({ username: to });
+      
+      if (!unreadDm) {
+        unreadDm = new UnreadDM({ username: to });
+      }
+      
+      unreadDm.unreadFrom.set(currentUsername, true);
+      await unreadDm.save();
+      
+      // Send to both sender and recipient
+      socket.emit('dm message', dmMessage);
+      
+      // Find recipient's socket and send the message
+      for (const [socketId, username] of Object.entries(socketToUser)) {
+        if (username === to) {
+          io.to(socketId).emit('dm message', dmMessage);
+          
+          // Update recipient's DM list to show unread
+          const recipientDms = await getUserDms(to);
+          io.to(socketId).emit('user dms', recipientDms);
+        }
+      }
+    } catch (error) {
+      console.error('Error sending DM:', error);
     }
   });
   
   // Get discovered servers
-  socket.on('get discover servers', () => {
-    socket.emit('discover servers', Object.keys(servers));
+  socket.on('get discover servers', async () => {
+    try {
+      const allServers = await Server.find().select('name');
+      const serverNames = allServers.map(server => server.name);
+      socket.emit('discover servers', serverNames);
+    } catch (error) {
+      console.error('Error getting discover servers:', error);
+      socket.emit('discover servers', []);
+    }
   });
 
   // Create server
-  socket.on('create server', ({ serverName }) => {
+  socket.on('create server', async ({ serverName }) => {
     if (!currentUsername) return;
     
-    if (!servers[serverName]) {
-      servers[serverName] = [];
-      messages[serverName] = [];
-    }
-    
-    // Add user to server
-    servers[serverName] = servers[serverName].filter(user => user !== currentUsername);
-    servers[serverName].push(currentUsername);
-    
-    // Add server to user's server list
-    if (!users[currentUsername].servers) {
-      users[currentUsername].servers = [];
-    }
-    if (!users[currentUsername].servers.includes(serverName)) {
-      users[currentUsername].servers.push(serverName);
-    }
-    
-    saveData();
-    saveUsers();
-    
-    // Join socket.io room for this server
-    socket.join(serverName);
-    
-    // Emit server created event
-    socket.emit('server created', { serverName });
-    io.to(serverName).emit('server users', servers[serverName]);
-    io.emit('discover servers', Object.keys(servers));
-  });
-
-  // Join server
-  socket.on('join server', ({ serverName }) => {
-    if (!currentUsername) return;
-    
-    if (servers[serverName]) {
-      // Add user to server if not already there
-      if (!servers[serverName].includes(currentUsername)) {
-        servers[serverName].push(currentUsername);
+    try {
+      // Check if server already exists
+      let server = await Server.findOne({ name: serverName });
+      
+      if (!server) {
+        // Create new server
+        server = new Server({
+          name: serverName,
+          users: [currentUsername]
+        });
+        
+        await server.save();
+      } else {
+        // Server exists, add user if not already a member
+        if (!server.users.includes(currentUsername)) {
+          server.users.push(currentUsername);
+          await server.save();
+        }
       }
       
       // Add server to user's server list if not already there
-      if (!users[currentUsername].servers) {
-        users[currentUsername].servers = [];
-      }
-      if (!users[currentUsername].servers.includes(serverName)) {
-        users[currentUsername].servers.push(serverName);
-      }
+      const user = await User.findOne({ username: currentUsername });
       
-      saveData();
-      saveUsers();
+      if (!user.servers.includes(serverName)) {
+        user.servers.push(serverName);
+        await user.save();
+      }
       
       // Join socket.io room for this server
       socket.join(serverName);
       
-      // Emit server joined event
-      socket.emit('server joined', { serverName });
-      io.to(serverName).emit('server users', servers[serverName]);
+      // Emit server created event
+      socket.emit('server created', { serverName });
+      io.to(serverName).emit('server users', server.users);
+      
+      // Update discover servers list for all clients
+      const allServers = await Server.find().select('name');
+      const serverNames = allServers.map(s => s.name);
+      io.emit('discover servers', serverNames);
+    } catch (error) {
+      console.error('Error creating server:', error);
+    }
+  });
+
+  // Join server
+  socket.on('join server', async ({ serverName }) => {
+    if (!currentUsername) return;
+    
+    try {
+      let server = await Server.findOne({ name: serverName });
+      
+      if (server) {
+        // Add user to server if not already there
+        if (!server.users.includes(currentUsername)) {
+          server.users.push(currentUsername);
+          await server.save();
+        }
+        
+        // Add server to user's server list if not already there
+        const user = await User.findOne({ username: currentUsername });
+        
+        if (!user.servers.includes(serverName)) {
+          user.servers.push(serverName);
+          await user.save();
+        }
+        
+        // Join socket.io room for this server
+        socket.join(serverName);
+        
+        // Emit server joined event
+        socket.emit('server joined', { serverName });
+        io.to(serverName).emit('server users', server.users);
+      }
+    } catch (error) {
+      console.error('Error joining server:', error);
     }
   });
 
   // Server message
-  socket.on('server message', ({ serverName, message }) => {
+  socket.on('server message', async ({ serverName, message }) => {
     if (!currentUsername) return;
     
-    if (!servers[serverName] || !servers[serverName].includes(currentUsername)) {
-      return; // User must be in the server to send messages
-    }
-    
-    if (!messages[serverName]) {
-      messages[serverName] = [];
-    }
-    
-    const timestamp = Date.now();
-    const messageObj = { 
-      username: currentUsername, 
-      message, 
-      timestamp
-    };
-    
-    messages[serverName].push(messageObj);
-    saveData();
-
-    // add serverName to the message object for client-side filtering
-    const broadcastMessage = { ...messageObj, serverName };
-    
-    // mark as unread for all users in the server except the sender
-    servers[serverName].forEach(user => {
-      if (user !== currentUsername) {
-        if (!unreadServers[user]) {
-          unreadServers[user] = {};
-        }
-        unreadServers[user][serverName] = true;
+    try {
+      const server = await Server.findOne({ name: serverName });
+      
+      if (!server || !server.users.includes(currentUsername)) {
+        return; // User must be in the server to send messages
       }
-    });
-    
-    saveTokens();
-    
-    // Broadcast to all users in the server
-    io.to(serverName).emit('server message', broadcastMessage);
+      
+      const timestamp = Date.now();
+      const messageObj = { 
+        serverName,
+        username: currentUsername, 
+        message, 
+        timestamp
+      };
+      
+      // Save message to database
+      const newMessage = new Message(messageObj);
+      await newMessage.save();
+
+      // Add serverName to the message object for client-side filtering
+      const broadcastMessage = { 
+        username: currentUsername, 
+        message, 
+        timestamp,
+        serverName 
+      };
+      
+      // Mark as unread for all users in the server except the sender
+      for (const user of server.users) {
+        if (user !== currentUsername) {
+          let unreadServer = await UnreadServer.findOne({ username: user });
+          
+          if (!unreadServer) {
+            unreadServer = new UnreadServer({ username: user });
+          }
+          
+          unreadServer.unreadServers.set(serverName, true);
+          await unreadServer.save();
+        }
+      }
+      
+      // Broadcast to all users in the server
+      io.to(serverName).emit('server message', broadcastMessage);
+    } catch (error) {
+      console.error('Error sending server message:', error);
+    }
   });
 
   // Handle disconnection
   socket.on('disconnect', () => {
     console.log('User disconnected');
     delete socketToUser[socket.id];
-    // We don't remove the user from servers here as they might reconnect :)
+    // We don't remove the user from servers here as they might reconnect
   });
 });
 
