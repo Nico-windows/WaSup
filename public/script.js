@@ -61,6 +61,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const notificationBanner = document.getElementById('notification-banner');
     const allowNotificationsBtn = document.getElementById('allow-notifications');
     const denyNotificationsBtn = document.getElementById('deny-notifications');
+    
+    // Settings Elements
+    const settingsButton = document.getElementById('settings-button') || document.createElement('button');
+    const settingsModal = document.getElementById('settings-modal') || document.createElement('div');
+    const settingsCloseButton = document.getElementById('settings-close-button') || document.createElement('button');
+    const settingsSaveButton = document.getElementById('settings-save-button') || document.createElement('button');
+    const settingsCancelButton = document.getElementById('settings-cancel-button') || document.createElement('button');
+    const themeToggle = document.getElementById('theme-toggle') || document.createElement('button');
+    
+    // Toast container for notifications
+    const toastContainer = document.createElement('div');
+    toastContainer.id = 'toast-container';
+    toastContainer.className = 'toast-container';
+    document.body.appendChild(toastContainer);
   
     // App state
     let username = '';
@@ -76,8 +90,158 @@ document.addEventListener('DOMContentLoaded', () => {
     let selectedFile = null;
     let notificationPermission = 'default';
     
-    // Maximum number of rendered messages
-    const MAX_RENDERED_MESSAGES = 100;
+    // Settings
+    const defaultSettings = {
+      theme: 'light',
+      usernameFilter: true,
+      filterWords: ['hitler', 'nazi', 'diddy tec', 'racial slurs', 'offensive terms'],
+      enableNotifications: true,
+      notificationSound: true,
+      messageStyle: 'default',
+      fontSize: 'medium'
+    };
+    
+    let userSettings = { ...defaultSettings };
+    
+    // Load settings from localStorage
+    function loadSettings() {
+      try {
+        const savedSettings = localStorage.getItem('wasup-settings');
+        if (savedSettings) {
+          userSettings = { ...defaultSettings, ...JSON.parse(savedSettings) };
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      }
+      
+      // Apply theme
+      applyTheme();
+    }
+    
+    // Save settings to localStorage
+    function saveSettings() {
+      try {
+        localStorage.setItem('wasup-settings', JSON.stringify(userSettings));
+      } catch (error) {
+        console.error('Error saving settings:', error);
+      }
+    }
+    
+    // Apply theme based on settings
+    function applyTheme() {
+      if (userSettings.theme === 'dark') {
+        document.body.classList.add('dark-mode');
+      } else {
+        document.body.classList.remove('dark-mode');
+      }
+    }
+    
+    // Filter username to censor inappropriate terms
+    function filterUsername(name) {
+      if (!userSettings.usernameFilter) return name;
+      
+      let filteredName = name;
+      const wordList = Array.isArray(userSettings.filterWords) 
+        ? userSettings.filterWords 
+        : defaultSettings.filterWords;
+      
+      wordList.forEach(word => {
+        // Case insensitive check
+        const regex = new RegExp(word, 'gi');
+        if (regex.test(filteredName)) {
+          // Replace with asterisks
+          filteredName = filteredName.replace(regex, match => '*'.repeat(match.length));
+        }
+      });
+      
+      return filteredName;
+    }
+    
+    // Show toast notification
+    function showToast(message, type = 'info', duration = 3000) {
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.textContent = message;
+      
+      toastContainer.appendChild(toast);
+      
+      // Auto remove after duration
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => {
+          toastContainer.removeChild(toast);
+        }, 300);
+      }, duration);
+    }
+    
+    // Initialize settings
+    loadSettings();
+    
+    // Setup settings button handlers
+    if (settingsButton) {
+      settingsButton.addEventListener('click', () => {
+        settingsModal.classList.remove('hidden');
+        
+        // Populate settings form with current values
+        const themeSwitch = document.getElementById('theme-setting');
+        const filterSwitch = document.getElementById('username-filter-setting');
+        const filterWordsInput = document.getElementById('filter-words');
+        
+        if (themeSwitch) themeSwitch.checked = userSettings.theme === 'dark';
+        if (filterSwitch) filterSwitch.checked = userSettings.usernameFilter;
+        if (filterWordsInput) filterWordsInput.value = Array.isArray(userSettings.filterWords) 
+          ? userSettings.filterWords.join(', ') 
+          : userSettings.filterWords.toString();
+      });
+    }
+    
+    if (settingsCloseButton) {
+      settingsCloseButton.addEventListener('click', () => {
+        settingsModal.classList.add('hidden');
+      });
+    }
+    
+    if (settingsSaveButton) {
+      settingsSaveButton.addEventListener('click', () => {
+        // Get values from form
+        const themeSwitch = document.getElementById('theme-setting');
+        const filterSwitch = document.getElementById('username-filter-setting');
+        const filterWordsInput = document.getElementById('filter-words');
+        
+        if (themeSwitch) userSettings.theme = themeSwitch.checked ? 'dark' : 'light';
+        if (filterSwitch) userSettings.usernameFilter = filterSwitch.checked;
+        if (filterWordsInput) {
+          userSettings.filterWords = filterWordsInput.value
+            .split(',')
+            .map(word => word.trim())
+            .filter(word => word.length > 0);
+        }
+        
+        // Save and apply settings
+        saveSettings();
+        applyTheme();
+        
+        // Close settings modal
+        settingsModal.classList.add('hidden');
+        
+        // Show confirmation
+        showToast('Settings saved successfully', 'success');
+      });
+    }
+    
+    if (settingsCancelButton) {
+      settingsCancelButton.addEventListener('click', () => {
+        settingsModal.classList.add('hidden');
+      });
+    }
+    
+    if (themeToggle) {
+      themeToggle.addEventListener('click', () => {
+        userSettings.theme = userSettings.theme === 'dark' ? 'light' : 'dark';
+        saveSettings();
+        applyTheme();
+      });
+    }
     
     // Toggle between auth forms
     goToSignup.addEventListener('click', () => {
@@ -152,6 +316,12 @@ document.addEventListener('DOMContentLoaded', () => {
       Notification.requestPermission().then((permission) => {
         notificationPermission = permission;
         notificationBanner.classList.add('hidden');
+        
+        if (permission === 'granted') {
+          userSettings.enableNotifications = true;
+          saveSettings();
+          showToast('Notifications enabled', 'success');
+        }
       });
     });
   
@@ -161,8 +331,8 @@ document.addEventListener('DOMContentLoaded', () => {
   
     // Show notification
     function showNotification(title, body, icon) {
-      if (notificationPermission !== 'granted' || document.hasFocus()) {
-        return; // Don't show notification if we don't have permission or the app is in focus
+      if (!userSettings.enableNotifications || notificationPermission !== 'granted' || document.hasFocus()) {
+        return; // Don't show notification if disabled, no permission, or app is in focus
       }
       
       const notification = new Notification(title, {
@@ -183,7 +353,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Check file size (max 5MB)
         if (selectedFile.size > 5 * 1024 * 1024) {
-          alert('File size exceeds 5MB limit');
+          showToast('File size exceeds 5MB limit', 'error');
           selectedFile = null;
           fileInput.value = '';
           return;
@@ -360,6 +530,9 @@ document.addEventListener('DOMContentLoaded', () => {
       // Initialize notifications
       initNotifications();
       
+      // Show welcome toast
+      showToast(`Welcome back, ${username}!`, 'success');
+      
       // Restore last active server or DM
       if (data.lastActivity) {
         lastActivity = data.lastActivity;
@@ -390,12 +563,14 @@ document.addEventListener('DOMContentLoaded', () => {
     socket.on('signup success', () => {
       hideAllAuthForms();
       emailVerification.classList.remove('hidden');
+      showToast('Account created successfully! Please verify your email.', 'success');
     });
   
     // Handle password reset initiated
     socket.on('reset initiated', () => {
       resetError.textContent = '';
       resetSuccess.textContent = 'Password reset email sent. Please check your inbox.';
+      showToast('Password reset email sent', 'success');
     });
   
     // Handle auth errors
@@ -450,6 +625,8 @@ document.addEventListener('DOMContentLoaded', () => {
       unreadServers = {};
       selectedFile = null;
       attachmentPreview.classList.add('hidden');
+      
+      showToast('You have been logged out', 'info');
     });
   
     // Open Manage Servers Modal
@@ -481,6 +658,9 @@ document.addEventListener('DOMContentLoaded', () => {
         socket.emit('create server', { serverName });
         serverNameInput.value = '';
         serverModal.classList.add('hidden');
+        showToast(`Creating server: ${serverName}`, 'info');
+      } else {
+        showToast('Please enter a server name', 'error');
       }
     });
   
@@ -491,6 +671,9 @@ document.addEventListener('DOMContentLoaded', () => {
         socket.emit('join server', { serverName });
         serverNameInput.value = '';
         serverModal.classList.add('hidden');
+        showToast(`Joining server: ${serverName}`, 'info');
+      } else {
+        showToast('Please enter a server name', 'error');
       }
     });
   
@@ -505,6 +688,7 @@ document.addEventListener('DOMContentLoaded', () => {
       
       // Switch to the newly joined server
       switchToServer(serverName);
+      showToast(`Joined server: ${serverName}`, 'success');
     });
   
     // Handle server created response
@@ -518,6 +702,7 @@ document.addEventListener('DOMContentLoaded', () => {
       
       // Switch to the newly created server
       switchToServer(serverName);
+      showToast(`Server created: ${serverName}`, 'success');
     });
   
     // Update server list UI with joined servers and unread status
@@ -551,12 +736,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // Create or update DM list
     function updateDmList(dms) {
       dmList.innerHTML = '';
+      
       dms.forEach(({ user, hasUnread }) => {
         const dmItem = document.createElement('li');
+        const displayName = filterUsername(user); // Apply username filter
+        
         if (hasUnread) {
-          dmItem.innerHTML = `${user} <span class="unread-badge">!</span>`;
+          dmItem.innerHTML = `${displayName} <span class="unread-badge">!</span>`;
         } else {
-          dmItem.textContent = user;
+          dmItem.textContent = displayName;
         }
         
         if (activeDm === user && chatMode === 'dm') {
@@ -567,6 +755,7 @@ document.addEventListener('DOMContentLoaded', () => {
           socket.emit('get dm messages', { otherUser: user });
           switchToDmMode(user);
         });
+        
         dmList.appendChild(dmItem);
       });
     }
@@ -628,7 +817,8 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       
       // Update UI elements
-      currentServer.textContent = `Chat with: ${otherUser}`;
+      const displayName = filterUsername(otherUser); // Apply username filter
+      currentServer.textContent = `Chat with: ${displayName}`;
       messagesDiv.innerHTML = '';
       peopleList.classList.add('hidden');
       
@@ -637,7 +827,7 @@ document.addEventListener('DOMContentLoaded', () => {
       
       Array.from(dmList.children).forEach(item => {
         const dmUsername = item.textContent.replace(' !', ''); // Remove unread badge text if present
-        item.classList.toggle('active', dmUsername === otherUser);
+        item.classList.toggle('active', dmUsername === displayName);
       });
     }
   
@@ -665,17 +855,20 @@ document.addEventListener('DOMContentLoaded', () => {
     // Update People list for servers
     function updatePeopleList() {
       userList.innerHTML = '';
+      
       usersInServer.forEach(user => {
+        const displayName = filterUsername(user); // Apply username filter
+        
         if (user !== username) { // Don't show DM option for self
           const userItem = document.createElement('li');
           userItem.innerHTML = `
-            ${user}
+            ${displayName}
             <span class="dm-user-action" data-username="${user}">DM</span>
           `;
           userList.appendChild(userItem);
         } else {
           const userItem = document.createElement('li');
-          userItem.textContent = `${user} (you)`;
+          userItem.textContent = `${displayName} (you)`;
           userList.appendChild(userItem);
         }
       });
@@ -703,15 +896,19 @@ document.addEventListener('DOMContentLoaded', () => {
     // Display DM users in the modal
     function displayDmUsers(users) {
       dmUsersList.innerHTML = '';
+      
       users.forEach(user => {
         if (user !== username) { // Don't show yourself in the DM list
           const userItem = document.createElement('li');
-          userItem.textContent = user;
+          const displayName = filterUsername(user); // Apply username filter
+          userItem.textContent = displayName;
+          
           userItem.addEventListener('click', () => {
             socket.emit('get dm messages', { otherUser: user });
             switchToDmMode(user);
             dmModal.classList.add('hidden');
           });
+          
           dmUsersList.appendChild(userItem);
         }
       });
@@ -774,8 +971,9 @@ document.addEventListener('DOMContentLoaded', () => {
           selectedFile = null;
           fileInput.value = '';
           attachmentPreview.classList.add('hidden');
+          showToast('File uploaded successfully', 'success');
         } else {
-          alert('Error uploading file. Please try again.');
+          showToast('Error uploading file. Please try again.', 'error');
         }
       };
       
@@ -806,12 +1004,22 @@ document.addEventListener('DOMContentLoaded', () => {
       const fragment = document.createDocumentFragment();
       
       messages.forEach(({ username: msgUsername, message, timestamp, attachment }) => {
-        const messageElement = document.createElement('div');
+        const messageContainer = document.createElement('div');
+        messageContainer.className = 'message-container';
+        
+        if (msgUsername === username) {
+          messageContainer.classList.add('own-message');
+        }
+        
         const formattedTime = formatTimestamp(timestamp);
+        const displayName = filterUsername(msgUsername); // Apply username filter
         
         let messageHTML = `
-          <strong>${msgUsername}:</strong> ${message}
-          <div class="message-timestamp">${formattedTime}</div>
+          <div class="message-header">
+            <span class="message-username">${displayName}</span>
+            <span class="message-timestamp">${formattedTime}</span>
+          </div>
+          <div class="message-content">${message}</div>
         `;
         
         // Add attachment if present
@@ -819,13 +1027,9 @@ document.addEventListener('DOMContentLoaded', () => {
           messageHTML += createAttachmentHTML(attachment);
         }
         
-        messageElement.innerHTML = messageHTML;
+        messageContainer.innerHTML = messageHTML;
         
-        if (msgUsername === username) {
-          messageElement.classList.add('own-message');
-        }
-        
-        fragment.appendChild(messageElement);
+        fragment.appendChild(messageContainer);
       });
       
       // Append all messages at once
@@ -837,12 +1041,22 @@ document.addEventListener('DOMContentLoaded', () => {
       const fragment = document.createDocumentFragment();
       
       messages.forEach(({ from, to, message, timestamp, attachment }) => {
-        const messageElement = document.createElement('div');
+        const messageContainer = document.createElement('div');
+        messageContainer.className = 'message-container';
+        
+        if (from === username) {
+          messageContainer.classList.add('own-message');
+        }
+        
         const formattedTime = formatTimestamp(timestamp);
+        const displayName = filterUsername(from); // Apply username filter
         
         let messageHTML = `
-          <strong>${from}:</strong> ${message}
-          <div class="message-timestamp">${formattedTime}</div>
+          <div class="message-header">
+            <span class="message-username">${displayName}</span>
+            <span class="message-timestamp">${formattedTime}</span>
+          </div>
+          <div class="message-content">${message}</div>
         `;
         
         // Add attachment if present
@@ -850,13 +1064,9 @@ document.addEventListener('DOMContentLoaded', () => {
           messageHTML += createAttachmentHTML(attachment);
         }
         
-        messageElement.innerHTML = messageHTML;
+        messageContainer.innerHTML = messageHTML;
         
-        if (from === username) {
-          messageElement.classList.add('own-message');
-        }
-        
-        fragment.appendChild(messageElement);
+        fragment.appendChild(messageContainer);
       });
       
       messagesDiv.appendChild(fragment);
@@ -866,12 +1076,22 @@ document.addEventListener('DOMContentLoaded', () => {
     socket.on('server message', ({ username: msgUsername, message, timestamp, serverName, attachment }) => {
       // If this server is currently active, display the message
       if (chatMode === 'server' && activeServer === serverName) {
-        const messageElement = document.createElement('div');
+        const messageContainer = document.createElement('div');
+        messageContainer.className = 'message-container';
+        
+        if (msgUsername === username) {
+          messageContainer.classList.add('own-message');
+        }
+        
         const formattedTime = formatTimestamp(timestamp);
+        const displayName = filterUsername(msgUsername); // Apply username filter
         
         let messageHTML = `
-          <strong>${msgUsername}:</strong> ${message}
-          <div class="message-timestamp">${formattedTime}</div>
+          <div class="message-header">
+            <span class="message-username">${displayName}</span>
+            <span class="message-timestamp">${formattedTime}</span>
+          </div>
+          <div class="message-content">${message}</div>
         `;
         
         // Add attachment if present
@@ -879,13 +1099,9 @@ document.addEventListener('DOMContentLoaded', () => {
           messageHTML += createAttachmentHTML(attachment);
         }
         
-        messageElement.innerHTML = messageHTML;
+        messageContainer.innerHTML = messageHTML;
         
-        if (msgUsername === username) {
-          messageElement.classList.add('own-message');
-        }
-        
-        messagesDiv.appendChild(messageElement);
+        messagesDiv.appendChild(messageContainer);
         
         // Check if we need to clean up old messages
         if (messagesDiv.children.length > MAX_RENDERED_MESSAGES + 20) {
@@ -923,7 +1139,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Show notification
         showNotification(
           `New message in ${serverName}`,
-          `${msgUsername}: ${message.substring(0, 50)}${message.length > 50 ? '...' : ''}`
+          `${displayName}: ${message.substring(0, 50)}${message.length > 50 ? '...' : ''}`
         );
       }
     });
@@ -932,12 +1148,22 @@ document.addEventListener('DOMContentLoaded', () => {
     socket.on('dm message', ({ from, to, message, timestamp, attachment }) => {
       // If this DM is currently active, display it
       if (chatMode === 'dm' && ((from === activeDm) || (to === activeDm))) {
-        const messageElement = document.createElement('div');
+        const messageContainer = document.createElement('div');
+        messageContainer.className = 'message-container';
+        
+        if (from === username) {
+          messageContainer.classList.add('own-message');
+        }
+        
         const formattedTime = formatTimestamp(timestamp);
+        const displayName = filterUsername(from); // Apply username filter
         
         let messageHTML = `
-          <strong>${from}:</strong> ${message}
-          <div class="message-timestamp">${formattedTime}</div>
+          <div class="message-header">
+            <span class="message-username">${displayName}</span>
+            <span class="message-timestamp">${formattedTime}</span>
+          </div>
+          <div class="message-content">${message}</div>
         `;
         
         // Add attachment if present
@@ -945,13 +1171,9 @@ document.addEventListener('DOMContentLoaded', () => {
           messageHTML += createAttachmentHTML(attachment);
         }
         
-        messageElement.innerHTML = messageHTML;
+        messageContainer.innerHTML = messageHTML;
         
-        if (from === username) {
-          messageElement.classList.add('own-message');
-        }
-        
-        messagesDiv.appendChild(messageElement);
+        messagesDiv.appendChild(messageContainer);
         
         // Check if we need to clean up old messages
         if (messagesDiv.children.length > MAX_RENDERED_MESSAGES + 20) {
@@ -987,8 +1209,9 @@ document.addEventListener('DOMContentLoaded', () => {
         socket.emit('get dms'); // Refresh DM list to show unread badge
         
         // Show notification
+        const displayName = filterUsername(from); // Apply username filter
         showNotification(
-          `Message from ${from}`,
+          `Message from ${displayName}`,
           `${message.substring(0, 50)}${message.length > 50 ? '...' : ''}`
         );
       }
@@ -1066,6 +1289,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Handle Discover Servers
     socket.on('discover servers', (servers) => {
       discoverServersList.innerHTML = ''; // Clear previous list
+      
       servers.forEach(serverName => {
         const serverItem = document.createElement('li');
         
@@ -1112,4 +1336,15 @@ document.addEventListener('DOMContentLoaded', () => {
       localStorage.removeItem('wasupUsername');
       localStorage.removeItem('wasupToken');
     });
+    
+    // Add dark/light mode toggle for system preference changes
+    if (window.matchMedia) {
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+        if (event.matches && userSettings.theme === 'system') {
+          document.body.classList.add('dark-mode');
+        } else if (userSettings.theme === 'system') {
+          document.body.classList.remove('dark-mode');
+        }
+      });
+    }
   });

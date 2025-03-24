@@ -80,14 +80,6 @@
   <div id="app" class="hidden">
     <!-- Sidebar -->
     <div id="sidebar">
-      <div class="sidebar-header">
-        <h1 class="app-title">WaSup</h1>
-        <div class="user-info">
-          <span id="user-display-sidebar"></span>
-          <div class="status-indicator online"></div>
-        </div>
-      </div>
-      
       <div class="sidebar-section">
         <h2>Servers</h2>
         <ul id="server-list"></ul>
@@ -99,54 +91,15 @@
         <ul id="dm-list"></ul>
         <button id="new-dm-button">+ New Message</button>
       </div>
-      
-      <div class="sidebar-footer">
-        <button id="settings-button" class="icon-button" title="Settings">
-          <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none">
-            <circle cx="12" cy="12" r="3"></circle>
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-          </svg>
-        </button>
-        
-        <button id="theme-toggle" class="icon-button" title="Toggle Theme">
-          <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" class="theme-light-icon">
-            <circle cx="12" cy="12" r="5"></circle>
-            <line x1="12" y1="1" x2="12" y2="3"></line>
-            <line x1="12" y1="21" x2="12" y2="23"></line>
-            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-            <line x1="1" y1="12" x2="3" y2="12"></line>
-            <line x1="21" y1="12" x2="23" y2="12"></line>
-            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-          </svg>
-          <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" class="theme-dark-icon hidden">
-            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-          </svg>
-        </button>
-        
-        <button id="logout-button" class="icon-button" title="Logout">
-          <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none">
-            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-            <polyline points="16 17 21 12 16 7"></polyline>
-            <line x1="21" y1="12" x2="9" y2="12"></line>
-          </svg>
-        </button>
-      </div>
     </div>
 
     <!-- Main Content -->
     <div id="main">
       <div id="chat-header">
         <h2 id="current-server">Welcome</h2>
-        <div class="header-actions">
+        <div class="user-actions">
           <span id="user-display"></span>
-          <button id="header-settings-button" class="icon-button" title="Settings">
-            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none">
-              <circle cx="12" cy="12" r="3"></circle>
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-            </svg>
-          </button>
+          <button id="logout-button">Logout</button>
         </div>
       </div>
       <div id="main-content">
@@ -197,163 +150,6 @@
     </div>
   </div>
   
-  <!-- Settings Modal -->
-  <div id="settings-modal" class="hidden">
-    <div class="modal-content settings-modal-content">
-      <div class="settings-header">
-        <h2>Settings</h2>
-        <button id="settings-close-button" class="close-button">&times;</button>
-      </div>
-      
-      <div class="settings-tabs">
-        <button class="tab-button active" data-tab="appearance">Appearance</button>
-        <button class="tab-button" data-tab="privacy">Privacy</button>
-        <button class="tab-button" data-tab="notifications">Notifications</button>
-        <button class="tab-button" data-tab="about">About</button>
-      </div>
-      
-      <div class="settings-content">
-        <!-- Appearance Tab -->
-        <div class="tab-content active" id="appearance-tab">
-          <div class="setting-group">
-            <h3>Theme</h3>
-            <div class="setting-row">
-              <span>Dark Mode</span>
-              <label class="switch">
-                <input type="checkbox" id="theme-setting">
-                <span class="slider round"></span>
-              </label>
-            </div>
-            <div class="setting-row">
-              <span>Chat Bubble Style</span>
-              <div class="select-wrapper">
-                <select id="chat-style-setting">
-                  <option value="default">Default</option>
-                  <option value="modern">Modern</option>
-                  <option value="compact">Compact</option>
-                </select>
-              </div>
-            </div>
-          </div>
-          <div class="setting-group">
-            <h3>Font Size</h3>
-            <div class="setting-row">
-              <span>Message Text</span>
-              <div class="select-wrapper">
-                <select id="font-size-setting">
-                  <option value="small">Small</option>
-                  <option value="medium" selected>Medium</option>
-                  <option value="large">Large</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Privacy Tab -->
-        <div class="tab-content" id="privacy-tab">
-          <div class="setting-group">
-            <h3>Content Filters</h3>
-            <div class="setting-row">
-              <span>Filter Inappropriate Usernames</span>
-              <label class="switch">
-                <input type="checkbox" id="username-filter-setting" checked>
-                <span class="slider round"></span>
-              </label>
-            </div>
-            <div class="setting-row">
-              <span>Custom Filter Words</span>
-              <textarea id="filter-words" placeholder="Add comma-separated words to filter"></textarea>
-              <div class="hint">Default filter includes offensive words and slurs</div>
-            </div>
-          </div>
-          <div class="setting-group">
-            <h3>Data Privacy</h3>
-            <div class="setting-row">
-              <span>Show Read Receipts</span>
-              <label class="switch">
-                <input type="checkbox" id="read-receipts-setting" checked>
-                <span class="slider round"></span>
-              </label>
-            </div>
-            <div class="setting-row">
-              <span>Show Online Status</span>
-              <label class="switch">
-                <input type="checkbox" id="online-status-setting" checked>
-                <span class="slider round"></span>
-              </label>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Notifications Tab -->
-        <div class="tab-content" id="notifications-tab">
-          <div class="setting-group">
-            <h3>Desktop Notifications</h3>
-            <div class="setting-row">
-              <span>Enable Notifications</span>
-              <label class="switch">
-                <input type="checkbox" id="enable-notifications-setting">
-                <span class="slider round"></span>
-              </label>
-            </div>
-            <div class="setting-row">
-              <span>Notification Sound</span>
-              <label class="switch">
-                <input type="checkbox" id="notification-sound-setting" checked>
-                <span class="slider round"></span>
-              </label>
-            </div>
-          </div>
-          <div class="setting-group">
-            <h3>Message Notifications</h3>
-            <div class="setting-row">
-              <span>Direct Messages</span>
-              <div class="select-wrapper">
-                <select id="dm-notifications-setting">
-                  <option value="all">All Messages</option>
-                  <option value="mentions">Only Mentions</option>
-                  <option value="none">None</option>
-                </select>
-              </div>
-            </div>
-            <div class="setting-row">
-              <span>Server Messages</span>
-              <div class="select-wrapper">
-                <select id="server-notifications-setting">
-                  <option value="all">All Messages</option>
-                  <option value="mentions">Only Mentions</option>
-                  <option value="none">None</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <!-- About Tab -->
-        <div class="tab-content" id="about-tab">
-          <div class="about-content">
-            <h3>WaSup Chat App</h3>
-            <p>Version 1.1.0</p>
-            <p>© 2023 WaSup Team</p>
-            <p>A real-time chat application built with Node.js, Socket.IO, and MongoDB.</p>
-            <div class="credits">
-              <h4>Credits</h4>
-              <p>Icons: Feather Icons</p>
-              <p>Backend: Express.js, MongoDB</p>
-              <p>Realtime: Socket.IO</p>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <div class="settings-actions">
-        <button id="settings-save-button" class="primary-button">Save Changes</button>
-        <button id="settings-cancel-button">Cancel</button>
-      </div>
-    </div>
-  </div>
-  
   <!-- Notification Banner -->
   <div class="notification-banner hidden" id="notification-banner">
     <p>Enable notifications to stay updated when you receive new messages.</p>
@@ -362,9 +158,6 @@
       <button class="deny-button" id="deny-notifications">Not now</button>
     </div>
   </div>
-
-  <!-- Toast Notification -->
-  <div id="toast-container" class="toast-container"></div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script src="script.js"></script>
