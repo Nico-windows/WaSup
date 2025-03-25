@@ -1,12 +1,14 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>WaSup</title>
-  <link rel="icon" type="image/x-icon" href="/images/favicon.ico">
+  <title>WaSup</title> 
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
+
+
 <body>
   <!-- Auth Container -->
   <div id="auth-container">
@@ -99,6 +101,7 @@
         <h2 id="current-server">Welcome</h2>
         <div class="user-actions">
           <span id="user-display"></span>
+          <button id="settings-button"><i class="fas fa-cog"></i></button>
           <button id="logout-button">Logout</button>
         </div>
       </div>
@@ -150,14 +153,10 @@
     </div>
   </div>
   
-  <!-- Notification Banner -->
-  <div class="notification-banner hidden" id="notification-banner">
-    <p>Enable notifications to stay updated when you receive new messages.</p>
-    <div class="notification-buttons">
-      <button class="allow-button" id="allow-notifications">Allow</button>
-      <button class="deny-button" id="deny-notifications">Not now</button>
-    </div>
-  </div>
+  <!-- Settings Modal -->
+  
+  <!-- Toast Container -->
+  <div id="toast-container" class="toast-container"></div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script src="script.js"></script>
