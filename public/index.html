@@ -1,204 +1,104 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>WaSup</title> 
   <link rel="stylesheet" href="styles.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
+
 
 <body>
   <!-- Auth Container -->
   <div id="auth-container">
-    <div class="auth-card">
-      <div class="auth-logo">
-        <i class="fas fa-comments"></i>
-        <h1>WaSup</h1>
+    <div class="auth-form" id="login-form">
+      <h2>Login to WaSup</h2>
+      <div class="input-group">
+        <label for="login-username">Username</label>
+        <input type="text" id="login-username" placeholder="Enter your username" autocomplete="username">
       </div>
-      
-      <div class="auth-form" id="login-form">
-        <h2>Welcome back</h2>
-        <p class="auth-subtitle">We're so excited to see you again!</p>
-        
-        <div class="input-group">
-          <label for="login-username">Username</label>
-          <div class="input-wrapper">
-            <i class="fas fa-user"></i>
-            <input type="text" id="login-username" placeholder="Enter your username" autocomplete="username">
-          </div>
-        </div>
-        
-        <div class="input-group">
-          <label for="login-password">Password</label>
-          <div class="input-wrapper">
-            <i class="fas fa-lock"></i>
-            <input type="password" id="login-password" placeholder="Enter your password" autocomplete="current-password">
-          </div>
-        </div>
-        
-        <div class="error-message" id="login-error"></div>
-        
-        <button class="primary-button" id="login-button">
-          <span>Login</span>
-          <i class="fas fa-arrow-right"></i>
-        </button>
-        
-        <p class="toggle-auth">Don't have an account? <span id="go-to-signup">Sign up</span></p>
-        <p class="toggle-auth">Forgot password? <span id="go-to-reset">Reset password</span></p>
+      <div class="input-group">
+        <label for="login-password">Password</label>
+        <input type="password" id="login-password" placeholder="Enter your password" autocomplete="current-password">
       </div>
+      <div class="error-message" id="login-error"></div>
+      <div class="auth-form-buttons">
+        <button class="primary-button" id="login-button">Login</button>
+      </div>
+      <p class="toggle-auth">Don't have an account? <span id="go-to-signup">Sign up</span></p>
+      <p class="toggle-auth">Forgot password? <span id="go-to-reset">Reset password</span></p>
+    </div>
 
-      <div class="auth-form hidden" id="signup-form">
-        <h2>Create an Account</h2>
-        <p class="auth-subtitle">Join the conversation today!</p>
-        
-        <div class="input-group">
-          <label for="signup-username">Username</label>
-          <div class="input-wrapper">
-            <i class="fas fa-user"></i>
-            <input type="text" id="signup-username" placeholder="Choose a username" autocomplete="username">
-          </div>
-        </div>
-        
-        <div class="input-group">
-          <label for="signup-email">Email</label>
-          <div class="input-wrapper">
-            <i class="fas fa-envelope"></i>
-            <input type="email" id="signup-email" placeholder="Enter your email" autocomplete="email">
-          </div>
-        </div>
-        
-        <div class="input-group">
-          <label for="signup-password">Password</label>
-          <div class="input-wrapper">
-            <i class="fas fa-lock"></i>
-            <input type="password" id="signup-password" placeholder="Choose a password" autocomplete="new-password">
-          </div>
-        </div>
-        
-        <div class="input-group">
-          <label for="signup-confirm-password">Confirm Password</label>
-          <div class="input-wrapper">
-            <i class="fas fa-lock"></i>
-            <input type="password" id="signup-confirm-password" placeholder="Confirm your password" autocomplete="new-password">
-          </div>
-        </div>
-        
-        <div class="error-message" id="signup-error"></div>
-        
-        <button class="primary-button" id="signup-button">
-          <span>Sign Up</span>
-          <i class="fas fa-user-plus"></i>
-        </button>
-        
-        <p class="toggle-auth">Already have an account? <span id="go-to-login">Login</span></p>
+    <div class="auth-form hidden" id="signup-form">
+      <h2>Create an Account</h2>
+      <div class="input-group">
+        <label for="signup-username">Username</label>
+        <input type="text" id="signup-username" placeholder="Choose a username" autocomplete="username">
       </div>
-
-      <div class="auth-form hidden" id="reset-form">
-        <h2>Reset Password</h2>
-        <p class="auth-subtitle">We'll send you a reset link</p>
-        
-        <div class="input-group">
-          <label for="reset-email">Email</label>
-          <div class="input-wrapper">
-            <i class="fas fa-envelope"></i>
-            <input type="email" id="reset-email" placeholder="Enter your email" autocomplete="email">
-          </div>
-        </div>
-        
-        <div class="error-message" id="reset-error"></div>
-        <div class="success-message" id="reset-success"></div>
-        
-        <button class="primary-button" id="reset-button">
-          <span>Send Reset Link</span>
-          <i class="fas fa-paper-plane"></i>
-        </button>
-        
-        <p class="toggle-auth">Remember your password? <span id="back-to-login">Back to login</span></p>
+      <div class="input-group">
+        <label for="signup-email">Email</label>
+        <input type="email" id="signup-email" placeholder="Enter your email" autocomplete="email">
       </div>
+      <div class="input-group">
+        <label for="signup-password">Password</label>
+        <input type="password" id="signup-password" placeholder="Choose a password" autocomplete="new-password">
+      </div>
+      <div class="input-group">
+        <label for="signup-confirm-password">Confirm Password</label>
+        <input type="password" id="signup-confirm-password" placeholder="Confirm your password" autocomplete="new-password">
+      </div>
+      <div class="error-message" id="signup-error"></div>
+      <div class="auth-form-buttons">
+        <button class="primary-button" id="signup-button">Sign Up</button>
+      </div>
+      <p class="toggle-auth">Already have an account? <span id="go-to-login">Login</span></p>
+    </div>
 
-      <div class="auth-form hidden" id="email-verification">
-        <div class="verification-icon">
-          <i class="fas fa-envelope-open-text"></i>
-        </div>
-        <h2>Check Your Email</h2>
-        <p>A verification email has been sent to your email address.</p>
-        <p>Please check your inbox and click the verification link to activate your account.</p>
-        
-        <button class="primary-button" id="back-to-login-button">
-          <span>Back to Login</span>
-          <i class="fas fa-arrow-left"></i>
-        </button>
+    <div class="auth-form hidden" id="reset-form">
+      <h2>Reset Password</h2>
+      <div class="input-group">
+        <label for="reset-email">Email</label>
+        <input type="email" id="reset-email" placeholder="Enter your email" autocomplete="email">
+      </div>
+      <div class="error-message" id="reset-error"></div>
+      <div class="success-message" id="reset-success"></div>
+      <div class="auth-form-buttons">
+        <button class="primary-button" id="reset-button">Send Reset Link</button>
+      </div>
+      <p class="toggle-auth">Remember your password? <span id="back-to-login">Back to login</span></p>
+    </div>
+
+    <div class="auth-form hidden" id="email-verification">
+      <h2>Email Verification</h2>
+      <p>A verification email has been sent to your email address.</p>
+      <p>Please check your inbox and click the verification link to activate your account.</p>
+      <div class="auth-form-buttons">
+        <button class="primary-button" id="back-to-login-button">Back to Login</button>
       </div>
     </div>
   </div>
 
   <div id="app" class="hidden">
-    <!-- App Header - Mobile Only -->
-    <div id="mobile-header">
-      <button id="mobile-menu-toggle" class="icon-button">
-        <i class="fas fa-bars"></i>
-      </button>
-      <h2 id="mobile-title">WaSup</h2>
-      <button id="mobile-users-toggle" class="icon-button">
-        <i class="fas fa-users"></i>
-      </button>
-    </div>
-    
     <!-- Sidebar -->
     <div id="sidebar">
-      <div class="sidebar-header">
-        <h1><i class="fas fa-comments"></i> WaSup</h1>
-        <button id="sidebar-close" class="icon-button mobile-only">
-          <i class="fas fa-times"></i>
-        </button>
+      <div class="sidebar-section">
+        <h2>Servers</h2>
+        <ul id="server-list"></ul>
+        <button id="manage-server-button">+ Manage Servers</button>
       </div>
       
       <div class="sidebar-section">
-        <div class="section-header">
-          <h2>Servers</h2>
-          <button id="manage-server-button" class="circle-button" title="Add Server">
-            <i class="fas fa-plus"></i>
-          </button>
-        </div>
-        <ul id="server-list" class="animated-list"></ul>
-      </div>
-      
-      <div class="sidebar-section">
-        <div class="section-header">
-          <h2>Direct Messages</h2>
-          <button id="new-dm-button" class="circle-button" title="New Message">
-            <i class="fas fa-plus"></i>
-          </button>
-        </div>
-        <ul id="dm-list" class="animated-list"></ul>
-      </div>
-      
-      <div class="user-profile">
-        <div class="user-avatar">
-          <i class="fas fa-user"></i>
-        </div>
-        <div class="user-info">
-          <span id="user-display"></span>
-          <span class="user-status">Online</span>
-        </div>
-        <div class="user-actions">
-          <button id="settings-button" class="icon-button" title="Settings">
-            <i class="fas fa-cog"></i>
-          </button>
-          <button id="logout-button" class="icon-button" title="Logout">
-            <i class="fas fa-sign-out-alt"></i>
-          </button>
-        </div>
+        <h2>Direct Messages</h2>
+        <ul id="dm-list"></ul>
+        <button id="new-dm-button">+ New Message</button>
       </div>
     </div>
 
     <!-- Main Content -->
     <div id="main">
       <div id="chat-header">
+<<<<<<< HEAD
         <div class="chat-header-info">
           <h2 id="current-server">Welcome</h2>
           <span id="server-members-count" class="header-subtitle"></span>
@@ -207,301 +107,67 @@
           <button id="search-button" class="icon-button" title="Search">
             <i class="fas fa-search"></i>
           </button>
+=======
+        <h2 id="current-server">Welcome</h2>
+        <div class="user-actions">
+          <span id="user-display"></span>
+          <button id="settings-button"><i class="fas fa-cog"></i></button>
+          <button id="logout-button">Logout</button>
+>>>>>>> parent of 6e12135 (0.8.1 Minor UI changes)
         </div>
       </div>
-      
       <div id="main-content">
         <div id="chat">
-          <div id="messages" class="messages-container"></div>
+          <div id="messages"></div>
           <div id="attachment-preview" class="hidden"></div>
-          <div id="typing-indicator" class="hidden">
-            <span class="dot"></span>
-            <span class="dot"></span>
-            <span class="dot"></span>
-            <span>Someone is typing...</span>
-          </div>
         </div>
-        
         <div id="people-list">
-          <div class="people-header">
-            <h3>Members</h3>
-            <span id="online-count"></span>
-          </div>
-          <div class="search-members">
-            <i class="fas fa-search"></i>
-            <input type="text" id="member-search" placeholder="Find a member">
-          </div>
-          <ul id="user-list" class="animated-list"></ul>
+          <h3>People</h3>
+          <ul id="user-list"></ul>
         </div>
       </div>
-      
       <div id="input-area">
-        <button class="attachment-button" title="Add Attachment">
-          <i class="fas fa-plus"></i>
+        <div class="file-input-container">
+          <button class="file-input-button">+</button>
           <input type="file" id="file-input" class="file-input">
-        </button>
-        <div class="message-input-container">
-          <input type="text" id="message-input" placeholder="Type a message...">
-          <div class="input-actions">
-            <button class="emoji-button" title="Emoji">
-              <i class="far fa-smile"></i>
-            </button>
-            <button class="gif-button" title="GIF">
-              <i class="fas fa-image"></i>
-            </button>
-          </div>
         </div>
-        <button id="send-button" class="send-button" title="Send">
-          <i class="fas fa-paper-plane"></i>
-        </button>
+        <input type="text" id="message-input" placeholder="Type a message...">
+        <button id="send-button">Send</button>
       </div>
     </div>
   </div>
 
   <!-- Server Modal -->
-  <div id="server-modal" class="modal hidden">
-    <div class="modal-overlay"></div>
+  <div id="server-modal" class="hidden">
     <div class="modal-content">
-      <div class="modal-header">
-        <h2>Manage Servers</h2>
-        <button id="modal-close-button" class="close-button">
-          <i class="fas fa-times"></i>
-        </button>
-      </div>
-      
-      <div class="modal-body">
-        <div class="server-actions">
-          <button id="create-server-tab" class="tab-button active">Create</button>
-          <button id="join-server-tab" class="tab-button">Join</button>
-          <button id="discover-server-tab" class="tab-button">Discover</button>
-        </div>
-        
-        <div id="create-server-panel" class="server-panel">
-          <div class="server-icon-picker">
-            <div class="server-icon">
-              <i class="fas fa-users"></i>
-            </div>
-            <span>Upload Icon</span>
-          </div>
-          <div class="input-group">
-            <label for="server-name-input">Server Name</label>
-            <input type="text" id="server-name-input" placeholder="Enter server name..." maxlength="20">
-          </div>
-          <button id="create-server-button" class="primary-button">
-            <i class="fas fa-plus"></i>
-            <span>Create Server</span>
-          </button>
-        </div>
-        
-        <div id="join-server-panel" class="server-panel hidden">
-          <div class="input-group">
-            <label for="join-server-input">Server Name</label>
-            <input type="text" id="join-server-input" placeholder="Enter server name to join...">
-          </div>
-          <button id="join-server-button" class="primary-button">
-            <i class="fas fa-sign-in-alt"></i>
-            <span>Join Server</span>
-          </button>
-        </div>
-        
-        <div id="discover-server-panel" class="server-panel hidden">
-          <div class="input-group">
-            <div class="input-wrapper">
-              <i class="fas fa-search"></i>
-              <input type="text" id="discover-search-input" placeholder="Search servers...">
-            </div>
-          </div>
-          <div class="discover-servers-container">
-            <h3>Available Servers</h3>
-            <ul id="discover-servers-list" class="animated-list"></ul>
-          </div>
-        </div>
-      </div>
+      <h2>Manage Servers</h2>
+      <input type="text" id="server-name-input" placeholder="Enter server name..." maxlength="20">
+      <button id="create-server-button">Create Server</button>
+      <button id="join-server-button">Join Server</button>
+      <h3>Discover Servers</h3>
+      <ul id="discover-servers-list"></ul>
+      <button id="modal-close-button">Close</button>
     </div>
   </div>
 
   <!-- DM Modal -->
-  <div id="dm-modal" class="modal hidden">
-    <div class="modal-overlay"></div>
+  <div id="dm-modal" class="hidden">
     <div class="modal-content">
-      <div class="modal-header">
-        <h2>New Direct Message</h2>
-        <button id="dm-modal-close-button" class="close-button">
-          <i class="fas fa-times"></i>
-        </button>
+      <h2>Start a Direct Message</h2>
+      <div class="input-group">
+        <input type="text" id="dm-search-input" placeholder="Search for users...">
       </div>
-      
-      <div class="modal-body">
-        <div class="input-group">
-          <label for="dm-search-input">Find User</label>
-          <div class="input-wrapper">
-            <i class="fas fa-search"></i>
-            <input type="text" id="dm-search-input" placeholder="Search for users...">
-          </div>
-        </div>
-        
-        <div id="dm-search-results">
-          <h3>Select a User</h3>
-          <ul id="dm-users-list" class="animated-list"></ul>
-        </div>
+      <div id="dm-search-results">
+        <ul id="dm-users-list"></ul>
       </div>
+      <button id="dm-modal-close-button">Close</button>
     </div>
   </div>
   
   <!-- Settings Modal -->
-  <div id="settings-modal" class="modal hidden">
-    <div class="modal-overlay"></div>
-    <div class="modal-content settings-modal">
-      <div class="modal-header">
-        <h2>Settings</h2>
-        <button id="settings-close-button" class="close-button">
-          <i class="fas fa-times"></i>
-        </button>
-      </div>
-      
-      <div class="modal-body">
-        <div class="settings-sidebar">
-          <button class="settings-nav-item active" data-target="appearance-settings">
-            <i class="fas fa-palette"></i>
-            <span>Appearance</span>
-          </button>
-          <button class="settings-nav-item" data-target="privacy-settings">
-            <i class="fas fa-shield-alt"></i>
-            <span>Privacy</span>
-          </button>
-          <button class="settings-nav-item" data-target="notifications-settings">
-            <i class="fas fa-bell"></i>
-            <span>Notifications</span>
-          </button>
-          <button class="settings-nav-item" data-target="advanced-settings">
-            <i class="fas fa-sliders-h"></i>
-            <span>Advanced</span>
-          </button>
-        </div>
-        
-        <div class="settings-content">
-          <div id="appearance-settings" class="settings-section active">
-            <h3>Appearance</h3>
-            <div class="setting-item theme-setting">
-              <span>Theme</span>
-              <div class="theme-options">
-                <button id="light-theme-button" class="theme-button">
-                  <i class="fas fa-sun"></i>
-                  <span>Light</span>
-                </button>
-                <button id="dark-theme-button" class="theme-button active">
-                  <i class="fas fa-moon"></i>
-                  <span>Dark</span>
-                </button>
-                <button id="system-theme-button" class="theme-button">
-                  <i class="fas fa-desktop"></i>
-                  <span>System</span>
-                </button>
-              </div>
-            </div>
-            
-            <div class="setting-item">
-              <span>Message Display</span>
-              <div class="selector">
-                <button class="selector-option active" data-value="cozy">Cozy</button>
-                <button class="selector-option" data-value="compact">Compact</button>
-              </div>
-            </div>
-            
-            <div class="setting-item">
-              <span>Font Size</span>
-              <div class="selector">
-                <button class="selector-option" data-value="small">Small</button>
-                <button class="selector-option active" data-value="medium">Medium</button>
-                <button class="selector-option" data-value="large">Large</button>
-              </div>
-            </div>
-          </div>
-          
-          <div id="privacy-settings" class="settings-section">
-            <h3>Privacy</h3>
-            <div class="setting-item">
-              <span>Filter Inappropriate Content</span>
-              <label class="switch">
-                <input type="checkbox" id="username-filter-setting" checked>
-                <span class="slider round"></span>
-              </label>
-            </div>
-            
-            <div class="input-group">
-              <label for="filter-words">Words to Filter (comma separated)</label>
-              <textarea id="filter-words" placeholder="e.g. bad, words, here"></textarea>
-            </div>
-          </div>
-          
-          <div id="notifications-settings" class="settings-section">
-            <h3>Notifications</h3>
-            <div class="setting-item">
-              <span>Enable Notifications</span>
-              <label class="switch">
-                <input type="checkbox" id="notifications-setting" checked>
-                <span class="slider round"></span>
-              </label>
-            </div>
-            
-            <div class="setting-item">
-              <span>Notification Sounds</span>
-              <label class="switch">
-                <input type="checkbox" id="notification-sound-setting" checked>
-                <span class="slider round"></span>
-              </label>
-            </div>
-            
-            <div class="setting-item">
-              <span>Mute New Servers</span>
-              <label class="switch">
-                <input type="checkbox" id="mute-servers-setting">
-                <span class="slider round"></span>
-              </label>
-            </div>
-          </div>
-          
-          <div id="advanced-settings" class="settings-section">
-            <h3>Advanced</h3>
-            <div class="setting-item">
-              <span>Developer Mode</span>
-              <label class="switch">
-                <input type="checkbox" id="developer-mode-setting">
-                <span class="slider round"></span>
-              </label>
-            </div>
-            
-            <div class="setting-item">
-              <span>Hardware Acceleration</span>
-              <label class="switch">
-                <input type="checkbox" id="hardware-accel-setting" checked>
-                <span class="slider round"></span>
-              </label>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <div class="modal-footer">
-        <button id="settings-cancel-button" class="secondary-button">
-          <span>Cancel</span>
-        </button>
-        <button id="settings-save-button" class="primary-button">
-          <span>Save Changes</span>
-        </button>
-      </div>
-    </div>
-  </div>
-  
-  <!-- Context Menu -->
-  <div id="context-menu" class="context-menu hidden">
-    <ul class="context-menu-items">
-      <!-- Will be populated dynamically -->
-    </ul>
-  </div>
   
   <!-- Toast Container -->
-  <div id="toast-container"></div>
+  <div id="toast-container" class="toast-container"></div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script src="script.js"></script>
