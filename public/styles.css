@@ -1394,12 +1394,7 @@ html:not(.dark) .modal-content {
   background-color: var(--light-bg-primary);
 }
 
-.settings-modal {
-  max-width: 800px;
-  display: flex;
-  flex-direction: column;
-  height: 80vh;
-}
+
 
 .modal-header {
   padding: var(--space-lg);
@@ -2179,4 +2174,129 @@ html:not(.dark) .toast-close:hover {
   #app, #auth-container {
     height: -webkit-fill-available;
   }
+}
+
+/* Add these CSS fixes for the settings modal */
+.settings-modal {
+  max-width: 800px;
+  display: flex;
+  flex-direction: column;
+  height: 80vh;
+}
+
+.settings-modal .modal-body {
+  display: flex;
+  overflow: hidden;
+  flex: 1;
+}
+
+.settings-sidebar {
+  width: 200px;
+  padding: var(--space-md) 0;
+  border-right: 1px solid var(--dark-border-color);
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+html:not(.dark) .settings-sidebar {
+  border-right-color: var(--light-border-color);
+}
+
+.settings-content {
+  flex: 1;
+  padding: var(--space-md);
+  overflow-y: auto;
+}
+
+/* Fix the appearance of message actions */
+.message-actions {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.message-bubble {
+  position: relative;
+}
+
+.message-bubble:hover .message-actions {
+  opacity: 1;
+}
+
+.message-action {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--dark-bg-secondary);
+  color: var(--dark-text-secondary);
+  cursor: pointer;
+  padding: 0;
+  border: none;
+  font-size: 12px;
+}
+
+html:not(.dark) .message-action {
+  background-color: var(--light-bg-secondary);
+  color: var(--light-text-secondary);
+}
+
+.message-action:hover {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+/* Animations for message deletion */
+.message-container.deleting {
+  animation: fadeOut 0.3s forwards;
+}
+
+@keyframes fadeOut {
+  to {
+    opacity: 0;
+    height: 0;
+    margin: 0;
+    padding: 0;
+    transform: translateX(20px);
+  }
+}
+
+/* Styles for report modal */
+.report-select {
+  width: 100%;
+  padding: 10px;
+  border-radius: var(--radius-md);
+  background-color: var(--dark-input-bg);
+  color: var(--dark-text-primary);
+  border: 1px solid var(--dark-border-color);
+}
+
+html:not(.dark) .report-select {
+  background-color: var(--light-input-bg);
+  color: var(--light-text-primary);
+  border-color: var(--light-border-color);
+}
+
+.reported-message {
+  background-color: var(--dark-bg-secondary);
+  padding: 12px;
+  border-radius: var(--radius-md);
+  margin: 16px 0;
+  border-left: 3px solid var(--primary-color);
+}
+
+html:not(.dark) .reported-message {
+  background-color: var(--light-bg-secondary);
+}
+
+.reported-content {
+  font-style: italic;
+  opacity: 0.8;
 }

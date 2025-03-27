@@ -986,6 +986,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   
   // Send Message (both server and DM)
+  // Replace the current sendMessage function with this one
   function sendMessage() {
     const message = messageInput.value.trim();
     
@@ -996,25 +997,392 @@ document.addEventListener('DOMContentLoaded', () => {
     isTyping = false;
     socket.emit('stop typing', { room: activeServer || activeDm });
     
-    if (chatMode === 'server' && activeServer) {
-      if (selectedFile) {
-        uploadAndSendFile(activeServer, null, message);
-      } else {
+    // Create a temporary message entry immediately
+    if (message) {
+      const tempTimestamp = Date.now();
+      
+      // Create a temporary message object
+      const tempMessage = chatMode === 'server' ? 
+        { username, message, timestamp: tempTimestamp, serverName: activeServer } :
+        { from: username, to: activeDm, message, timestamp: tempTimestamp };
+      
+      // Add message to UI immediately
+      if (chatMode === 'server' && activeServer) {
+        // Add temporary server message to UI
+        const wasNearBottom = isNearBottom();
+        addMessageToUI(tempMessage, true);
+        if (wasNearBottom) safeScrollToBottom();
+        
+        // Then send to server
         socket.emit('server message', { serverName: activeServer, message });
-      }
-    } else if (chatMode === 'dm' && activeDm) {
-      if (selectedFile) {
-        uploadAndSendFile(null, activeDm, message);
-      } else {
+      } else if (chatMode === 'dm' && activeDm) {
+        // Add temporary DM message to UI
+        const wasNearBottom = isNearBottom();
+        addDmToUI(tempMessage, true);
+        if (wasNearBottom) safeScrollToBottom();
+        
+        // Then send to server
         socket.emit('dm message', { to: activeDm, message });
       }
+    }
+    
+    // Handle file uploads
+    if (selectedFile) {
+      uploadAndSendFile(
+        chatMode === 'server' ? activeServer : null, 
+        chatMode === 'dm' ? activeDm : null, 
+        message
+      );
     }
     
     messageInput.value = '';
     messageInput.focus();
   }
-  
-  // Handle typing events
+
+  // Add these helper functions to render messages immediately
+  function addMessageToUI(message, isTemp = false) {
+    const { username: msgUsername, message: messageText, timestamp, serverName, attachment } = message;
+    
+    // Create the message element
+    const messageContainer = document.createElement('div');
+    messageContainer.className = 'message-container';
+    if (isTemp) messageContainer.classList.add('temp-message');
+    messageContainer.setAttribute('data-username', msgUsername);
+    messageContainer.setAttribute('data-timestamp', timestamp);
+    
+    if (msgUsername === username) {
+      messageContainer.classList.add('own-message');
+    }
+    
+    // Check if we should group with previous messages
+    const lastMsg = messagesDiv.querySelector('.message-container:last-child');
+    const shouldGroup = lastMsg && 
+                      lastMsg.getAttribute('data-username') === msgUsername &&
+                      Math.abs(parseInt(lastMsg.getAttribute('data-timestamp')) - timestamp) < 5 * 60 * 1000; // 5 minutes
+    
+    // Message bubble
+    const messageBubble = document.createElement('div');
+    messageBubble.className = 'message-bubble';
+    
+    // Add header or timestamp
+    if (!shouldGroup) {
+      const messageHeader = document.createElement('div');
+      messageHeader.className = 'message-header';
+      
+      const formattedTime = formatTimestamp(timestamp);
+      const displayName = filterUsername(msgUsername);
+      
+      messageHeader.innerHTML = `
+        <span class="message-username">${displayName}</span>
+        <span class="message-timestamp">${formattedTime}</span>
+      `;
+      
+      messageBubble.appendChild(messageHeader);
+    } else {
+      const inlineTime = document.createElement('span');
+      inlineTime.className = 'inline-timestamp';
+      inlineTime.textContent = new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      messageBubble.appendChild(inlineTime);
+    }
+    
+    // Message content
+    const messageContent = document.createElement('div');
+    messageContent.className = 'message-content';
+    messageContent.textContent = messageText;
+    messageBubble.appendChild(messageContent);
+    
+    // Add attachment if present
+    if (attachment) {
+      const attachmentHTML = createAttachmentHTML(attachment);
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = attachmentHTML;
+      while (tempDiv.firstChild) {
+        messageBubble.appendChild(tempDiv.firstChild);
+      }
+    }
+    
+    // Add message actions
+    addMessageActions(messageBubble, messageText, msgUsername);
+    
+    messageContainer.appendChild(messageBubble);
+    messagesDiv.appendChild(messageContainer);
+  }
+
+  function addDmToUI(message, isTemp = false) {
+    const { from, to, message: messageText, timestamp, attachment } = message;
+    
+    // Create the message element
+    const messageContainer = document.createElement('div');
+    messageContainer.className = 'message-container';
+    if (isTemp) messageContainer.classList.add('temp-message');
+    messageContainer.setAttribute('data-username', from);
+    messageContainer.setAttribute('data-timestamp', timestamp);
+    
+    if (from === username) {
+      messageContainer.classList.add('own-message');
+    }
+    
+    // Check if we should group with previous messages
+    const lastMsg = messagesDiv.querySelector('.message-container:last-child');
+    const shouldGroup = lastMsg && 
+                      lastMsg.getAttribute('data-username') === from &&
+                      Math.abs(parseInt(lastMsg.getAttribute('data-timestamp')) - timestamp) < 5 * 60 * 1000; // 5 minutes
+    
+    // Message bubble
+    const messageBubble = document.createElement('div');
+    messageBubble.className = 'message-bubble';
+    
+    // Add header or timestamp
+    if (!shouldGroup) {
+      const messageHeader = document.createElement('div');
+      messageHeader.className = 'message-header';
+      
+      const formattedTime = formatTimestamp(timestamp);
+      const displayName = filterUsername(from);
+      
+      messageHeader.innerHTML = `
+        <span class="message-username">${displayName}</span>
+        <span class="message-timestamp">${formattedTime}</span>
+      `;
+      
+      messageBubble.appendChild(messageHeader);
+    } else {
+      const inlineTime = document.createElement('span');
+      inlineTime.className = 'inline-timestamp';
+      inlineTime.textContent = new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      messageBubble.appendChild(inlineTime);
+    }
+    
+    // Message content
+    const messageContent = document.createElement('div');
+    messageContent.className = 'message-content';
+    messageContent.textContent = messageText;
+    messageBubble.appendChild(messageContent);
+    
+    // Add attachment if present
+    if (attachment) {
+      const attachmentHTML = createAttachmentHTML(attachment);
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = attachmentHTML;
+      while (tempDiv.firstChild) {
+        messageBubble.appendChild(tempDiv.firstChild);
+      }
+    }
+    
+    // Add message actions
+    addMessageActions(messageBubble, messageText, from);
+    
+    messageContainer.appendChild(messageBubble);
+    messagesDiv.appendChild(messageContainer);
+  }
+
+  // Add this function to create message actions with reporting functionality
+  function addMessageActions(messageBubble, messageText, msgUsername) {
+    const messageActions = document.createElement('div');
+    messageActions.className = 'message-actions';
+    messageActions.innerHTML = `
+      <button class="message-action emoji-action" title="React">
+        <i class="far fa-smile"></i>
+      </button>
+      <button class="message-action reply-action" title="Reply">
+        <i class="fas fa-reply"></i>
+      </button>
+      <button class="message-action more-action" title="More">
+        <i class="fas fa-ellipsis-v"></i>
+      </button>
+    `;
+    messageBubble.appendChild(messageActions);
+    
+    // Add event listeners to buttons
+    const emojiButton = messageActions.querySelector('.emoji-action');
+    const replyButton = messageActions.querySelector('.reply-action');
+    const moreButton = messageActions.querySelector('.more-action');
+    
+    // Emoji reaction
+    emojiButton.addEventListener('click', () => {
+      showEmojiPicker(messageBubble);
+    });
+    
+    // Reply functionality
+    replyButton.addEventListener('click', () => {
+      replyToMessage(messageText, msgUsername);
+    });
+    
+    // More options (including report)
+    moreButton.addEventListener('click', (e) => {
+      e.stopPropagation();
+      showMessageOptions(e, messageText, msgUsername, messageBubble);
+    });
+    
+    // Add context menu
+    messageBubble.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      showMessageOptions(e, messageText, msgUsername, messageBubble);
+    });
+  }
+
+  // Add these supporting functions
+  function showEmojiPicker(messageBubble) {
+    // Placeholder for emoji picker
+    showToast('Coming Soon', 'Emoji reactions will be available soon!', 'info');
+  }
+
+  function replyToMessage(messageText, msgUsername) {
+    // Add reply functionality
+    const displayName = filterUsername(msgUsername);
+    messageInput.value = `@${displayName} `;
+    messageInput.focus();
+    
+    // Show reply preview
+    showReplyPreview(messageText, msgUsername);
+  }
+
+  function showReplyPreview(messageText, msgUsername) {
+    // Placeholder for reply preview
+    // In a real implementation, you'd add UI to show which message is being replied to
+    showToast('Reply', `Replying to ${filterUsername(msgUsername)}`, 'info');
+  }
+
+  function showMessageOptions(event, messageText, msgUsername, messageBubble) {
+    const isOwnMessage = msgUsername === username;
+    
+    const menuItems = [
+      { text: 'Reply', icon: 'reply', action: () => replyToMessage(messageText, msgUsername) },
+      { text: 'Copy Text', icon: 'copy', action: () => {
+        navigator.clipboard.writeText(messageText)
+          .then(() => showToast('Copied', 'Text copied to clipboard', 'success'))
+          .catch(() => showToast('Error', 'Failed to copy text', 'error'));
+      }},
+      { divider: true }
+    ];
+    
+    if (isOwnMessage) {
+      menuItems.push({ 
+        text: 'Edit Message', 
+        icon: 'edit', 
+        action: () => editMessage(messageBubble, messageText)
+      });
+      
+      menuItems.push({ 
+        text: 'Delete Message', 
+        icon: 'trash-alt', 
+        danger: true, 
+        action: () => {
+          if (confirm('Are you sure you want to delete this message?')) {
+            deleteMessage(messageBubble);
+          }
+        }
+      });
+    } else {
+      menuItems.push({ 
+        text: 'Report Message', 
+        icon: 'flag', 
+        danger: true, 
+        action: () => showReportDialog(msgUsername, messageText)
+      });
+    }
+    
+    showContextMenu(event, menuItems);
+  }
+
+  // Report dialog function
+  function showReportDialog(reportedUser, messageContent) {
+    // Create report modal
+    const reportModal = document.createElement('div');
+    reportModal.className = 'modal report-modal';
+    reportModal.innerHTML = `
+      <div class="modal-overlay"></div>
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Report Message</h2>
+          <button class="close-button">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p>You are reporting a message from <strong>${filterUsername(reportedUser)}</strong></p>
+          <div class="reported-message">
+            <div class="reported-content">${messageContent}</div>
+          </div>
+          <div class="input-group">
+            <label>Reason for reporting:</label>
+            <select id="report-reason" class="report-select">
+              <option value="">Please select a reason</option>
+              <option value="harassment">Harassment or bullying</option>
+              <option value="hate">Hate speech</option>
+              <option value="violence">Violence or threats</option>
+              <option value="inappropriate">Inappropriate content</option>
+              <option value="spam">Spam</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div class="input-group" id="other-reason-group" style="display: none;">
+            <label for="other-reason">Please specify:</label>
+            <textarea id="other-reason" placeholder="Please explain why you're reporting this message..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="secondary-button cancel-report">Cancel</button>
+          <button class="primary-button submit-report">Submit Report</button>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(reportModal);
+    
+    // Add event listeners
+    const closeButton = reportModal.querySelector('.close-button');
+    const cancelButton = reportModal.querySelector('.cancel-report');
+    const submitButton = reportModal.querySelector('.submit-report');
+    const reasonSelect = reportModal.querySelector('#report-reason');
+    const otherReasonGroup = reportModal.querySelector('#other-reason-group');
+    
+    function closeReportModal() {
+      reportModal.classList.add('closing');
+      setTimeout(() => {
+        reportModal.remove();
+      }, 300);
+    }
+    
+    closeButton.addEventListener('click', closeReportModal);
+    cancelButton.addEventListener('click', closeReportModal);
+    
+    reasonSelect.addEventListener('change', () => {
+      if (reasonSelect.value === 'other') {
+        otherReasonGroup.style.display = 'block';
+      } else {
+        otherReasonGroup.style.display = 'none';
+      }
+    });
+    
+    submitButton.addEventListener('click', () => {
+      const reason = reasonSelect.value;
+      if (!reason) {
+        showToast('Error', 'Please select a reason for reporting', 'error');
+        return;
+      }
+      
+      let details = '';
+      if (reason === 'other') {
+        details = document.getElementById('other-reason').value.trim();
+        if (!details) {
+          showToast('Error', 'Please provide details for your report', 'error');
+          return;
+        }
+      }
+      
+      // Here you would send the report to the server
+      // socket.emit('report message', { user: reportedUser, message: messageContent, reason, details });
+      
+      closeReportModal();
+      showToast('Report Submitted', 'Thank you for your report. Our moderators will review it.', 'success');
+    });
+    
+    // Show modal with animation
+    setTimeout(() => reportModal.classList.add('active'), 10);
+  }
+
+  // Add this function to handle typing events
   function handleTyping() {
     if (!isTyping) {
       isTyping = true;
@@ -1053,238 +1421,77 @@ document.addEventListener('DOMContentLoaded', () => {
       }, TYPING_TIMEOUT);
     }
   }
-  
-  function uploadAndSendFile(serverName, dmUser, textMessage) {
-    const formData = new FormData();
-    formData.append('file', selectedFile);
+
+  // Add these placeholder functions for future implementation
+  function editMessage(messageBubble, messageText) {
+    // Placeholder for edit functionality
+    const messageContent = messageBubble.querySelector('.message-content');
+    const originalText = messageContent.textContent;
     
-    if (textMessage) {
-      formData.append('message', textMessage);
-    }
+    // Create editable input
+    const editInput = document.createElement('textarea');
+    editInput.className = 'edit-input';
+    editInput.value = originalText;
     
-    if (serverName) {
-      formData.append('serverName', serverName);
-    } else if (dmUser) {
-      formData.append('to', dmUser);
-    }
+    // Replace content with input
+    messageContent.textContent = '';
+    messageContent.appendChild(editInput);
     
-    // Add socket ID and username to headers
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', '/api/upload', true);
-    xhr.setRequestHeader('X-Socket-ID', socket.id);
-    xhr.setRequestHeader('X-Username', username);
-    
-    // Create and show upload progress
-    const progressContainer = document.createElement('div');
-    progressContainer.className = 'upload-progress-container';
-    progressContainer.innerHTML = `
-      <div class="upload-info">
-        <i class="fas fa-file-upload"></i>
-        <div class="upload-details">
-          <div class="upload-filename">${selectedFile.name}</div>
-          <div class="upload-status">Uploading... 0%</div>
-        </div>
-      </div>
-      <div class="upload-progress-bar">
-        <div class="upload-progress" style="width: 0%"></div>
-      </div>
+    // Add save/cancel buttons
+    const editActions = document.createElement('div');
+    editActions.className = 'edit-actions';
+    editActions.innerHTML = `
+      <button class="save-edit">Save</button>
+      <button class="cancel-edit">Cancel</button>
     `;
+    messageContent.appendChild(editActions);
     
-    messagesDiv.appendChild(progressContainer);
-    safeScrollToBottom();
+    // Focus input
+    editInput.focus();
     
-    xhr.upload.onprogress = function(e) {
-      if (e.lengthComputable) {
-        const percentComplete = Math.round((e.loaded / e.total) * 100);
-        progressContainer.querySelector('.upload-progress').style.width = percentComplete + '%';
-        progressContainer.querySelector('.upload-status').textContent = `Uploading... ${percentComplete}%`;
-      }
-    };
+    // Add event listeners
+    const saveButton = editActions.querySelector('.save-edit');
+    const cancelButton = editActions.querySelector('.cancel-edit');
     
-    xhr.onload = function() {
-      if (xhr.status === 200) {
-        // Success - clear the selected file and progress
-        selectedFile = null;
-        fileInput.value = '';
-        attachmentPreview.classList.add('hidden');
+    saveButton.addEventListener('click', () => {
+      const newText = editInput.value.trim();
+      if (newText && newText !== originalText) {
+        // Here you would emit an event to update the message on the server
+        // socket.emit('edit message', { messageId: xyz, newContent: newText });
         
-        // Remove upload progress indicator
-        progressContainer.remove();
+        // Update UI
+        messageContent.textContent = newText;
+        showToast('Message Updated', 'Your message has been edited', 'success');
       } else {
-        // Error handling
-        progressContainer.querySelector('.upload-status').textContent = 'Upload failed';
-        progressContainer.querySelector('.upload-progress').style.backgroundColor = 'var(--error-color)';
-        
-        showToast('Upload Failed', 'Error uploading file. Please try again.', 'error');
+        // Restore original
+        messageContent.textContent = originalText;
       }
-    };
-    
-    xhr.onerror = function() {
-      progressContainer.querySelector('.upload-status').textContent = 'Upload failed';
-      progressContainer.querySelector('.upload-progress').style.backgroundColor = 'var(--error-color)';
-      
-      showToast('Upload Failed', 'Network error occurred. Please try again.', 'error');
-    };
-    
-    xhr.send(formData);
-  }
-  
-  // Function to render a batch of messages efficiently
-  function renderMessages(messages) {
-    // Create a document fragment to batch DOM operations
-    const fragment = document.createDocumentFragment();
-    let lastSender = null;
-    let lastDate = null;
-    
-    messages.forEach((message, index) => {
-      const { username: msgUsername, message: messageText, timestamp, attachment } = message;
-      
-      // Check if we need to show a date separator
-      const messageDate = new Date(timestamp).toLocaleDateString();
-      if (lastDate !== messageDate) {
-        const dateSeparator = document.createElement('div');
-        dateSeparator.className = 'date-separator';
-        
-        const formattedDate = new Date(timestamp).toLocaleDateString('en-US', {
-          weekday: 'long',
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric'
-        });
-        
-        dateSeparator.innerHTML = `
-          <div class="date-line"></div>
-          <div class="date-text">${formattedDate}</div>
-          <div class="date-line"></div>
-        `;
-        
-        fragment.appendChild(dateSeparator);
-        lastDate = messageDate;
-        lastSender = null; // Reset last sender after date separator
-      }
-      
-      // Determine if this is a new message group
-      const isNewGroup = lastSender !== msgUsername;
-      lastSender = msgUsername;
-      
-      // Create message container
-      const messageContainer = document.createElement('div');
-      messageContainer.className = 'message-container';
-      messageContainer.setAttribute('data-username', msgUsername);
-      messageContainer.setAttribute('data-timestamp', timestamp);
-      
-      if (msgUsername === username) {
-        messageContainer.classList.add('own-message');
-      }
-      
-      // Message bubble contains the actual message content
-      const messageBubble = document.createElement('div');
-      messageBubble.className = 'message-bubble';
-      
-      // Only show the header for the first message in a group
-      if (isNewGroup) {
-        const messageHeader = document.createElement('div');
-        messageHeader.className = 'message-header';
-        
-        const formattedTime = formatTimestamp(timestamp);
-        const displayName = filterUsername(msgUsername);
-        
-        messageHeader.innerHTML = `
-          <span class="message-username">${displayName}</span>
-          <span class="message-timestamp">${formattedTime}</span>
-        `;
-        
-        messageBubble.appendChild(messageHeader);
-      } else {
-        // For subsequent messages in a group, just add a small timestamp
-        const inlineTime = document.createElement('span');
-        inlineTime.className = 'inline-timestamp';
-        inlineTime.textContent = new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        messageBubble.appendChild(inlineTime);
-      }
-      
-      // Message content
-      const messageContent = document.createElement('div');
-      messageContent.className = 'message-content';
-      messageContent.textContent = messageText;
-      messageBubble.appendChild(messageContent);
-      
-      // Add attachment if present
-      if (attachment) {
-        const attachmentHTML = createAttachmentHTML(attachment);
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = attachmentHTML;
-        while (tempDiv.firstChild) {
-          messageBubble.appendChild(tempDiv.firstChild);
-        }
-      }
-      
-      // Add message actions that appear on hover
-      const messageActions = document.createElement('div');
-      messageActions.className = 'message-actions';
-      messageActions.innerHTML = `
-        <button class="message-action" title="React">
-          <i class="far fa-smile"></i>
-        </button>
-        <button class="message-action" title="Reply">
-          <i class="fas fa-reply"></i>
-        </button>
-        <button class="message-action" title="More">
-          <i class="fas fa-ellipsis-v"></i>
-        </button>
-      `;
-      messageBubble.appendChild(messageActions);
-      
-      // Add context menu for message
-      messageBubble.addEventListener('contextmenu', (e) => {
-        e.preventDefault();
-        
-        const menuItems = [
-          { text: 'Reply', icon: 'reply', action: () => { /* Reply functionality */ } },
-          { text: 'Copy Text', icon: 'copy', action: () => {
-            navigator.clipboard.writeText(messageText)
-              .then(() => showToast('Copied', 'Text copied to clipboard', 'success'))
-              .catch(() => showToast('Error', 'Failed to copy text', 'error'));
-          }},
-          { divider: true }
-        ];
-        
-        // Add delete option only for own messages
-        if (msgUsername === username) {
-          menuItems.push({ 
-            text: 'Delete Message', 
-            icon: 'trash-alt', 
-            danger: true, 
-            action: () => {
-              if (confirm('Are you sure you want to delete this message?')) {
-                // Delete message functionality would go here
-                showToast('Deleted', 'Message has been deleted', 'success');
-              }
-            }
-          });
-        } else {
-          menuItems.push({ 
-            text: 'Report Message', 
-            icon: 'flag', 
-            danger: true, 
-            action: () => {
-              // Report functionality
-              showToast('Reported', 'Message has been reported', 'success');
-            }
-          });
-        }
-        
-        showContextMenu(e, menuItems);
-      });
-      
-      messageContainer.appendChild(messageBubble);
-      fragment.appendChild(messageContainer);
     });
     
-    // Append all messages at once
-    messagesDiv.appendChild(fragment);
+    cancelButton.addEventListener('click', () => {
+      // Restore original
+      messageContent.textContent = originalText;
+    });
   }
-  
+
+  function deleteMessage(messageBubble) {
+    // Placeholder for delete functionality
+    const messageContainer = messageBubble.closest('.message-container');
+    
+    // Add deletion animation
+    messageContainer.classList.add('deleting');
+    
+    // Here you would emit an event to delete the message on the server
+    // socket.emit('delete message', { messageId: xyz });
+    
+    // Remove after animation
+    setTimeout(() => {
+      messageContainer.remove();
+    }, 300);
+    
+    showToast('Message Deleted', 'Your message has been deleted', 'success');
+  }
+
   // Function to render DM messages efficiently
   function renderDmMessages(messages) {
     const fragment = document.createDocumentFragment();
