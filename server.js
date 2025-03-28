@@ -131,6 +131,24 @@ const upload = multer({
   }
 });
 
+const ReportSchema = new mongoose.Schema({
+  userId: { type: String, required: true },
+  reportedId: { type: String, required: true },
+  messageId: String,
+  timestamp: { type: Number, default: Date.now }
+  });
+
+const BannedUserSchema = new mongoose.Schema({
+  username: { type: String, required: true, unique: true },
+  reportCount: { type: Number, default: 0 },
+  bannedAt: { type: Number, default: Date.now },
+  reason: String
+  });
+  
+  // Create MongoDB models
+const Report = mongoose.model('Report', ReportSchema);
+const BannedUser = mongoose.model('BannedUser', BannedUserSchema);
+
 // Email transporter setup (using environment variables)
 let transporter;
 try {
@@ -145,6 +163,7 @@ try {
 } catch (error) {
   console.error('Failed to configure email transporter:', error);
 }
+
 
 // Helper functions for DMs
 function getDmKey(user1, user2) {
@@ -701,6 +720,128 @@ io.on('connection', (socket) => {
   
   let currentUsername = null;
   
+  // Report a message
+socket.on('report message', async ({ reportedUser, messageId }) => {
+  if (!currentUsername) return;
+  
+  try {
+  // Check if user is already banned
+  const isBanned = await BannedUser.findOne({ username: reportedUser });
+  if (isBanned) {
+  return; // Already banned, no need to report
+  }
+  
+  // Save report
+  const report = new Report({
+  userId: currentUsername,
+  reportedId: reportedUser,
+  messageId: messageId
+  });
+  await report.save();
+  
+  // Count total reports for this user
+  const reportCount = await Report.countDocuments({ reportedId: reportedUser });
+  
+  // Ban if 5 or more reports
+  if (reportCount >= 5) {
+  const bannedUser = new BannedUser({
+  username: reportedUser,
+  reportCount: reportCount,
+  reason: "Received 5 or more reports from community members"
+  });
+  await bannedUser.save();
+  
+  // Notify all clients about the ban
+  io.emit('user banned', reportedUser);
+  }
+  
+  } catch (error) {
+  console.error('Error reporting message:', error);
+  }
+  });
+  
+  // Report a user directly
+  socket.on('report user', async ({ username: reportedUser }) => {
+  if (!currentUsername) return;
+  
+  try {
+  // Check if user is already banned
+  const isBanned = await BannedUser.findOne({ username: reportedUser });
+  if (isBanned) {
+  return; // Already banned, no need to report
+  }
+  
+  // Save report
+  const report = new Report({
+  userId: currentUsername,
+  reportedId: reportedUser
+  });
+  await report.save();
+  
+  // Count total reports for this user
+  const reportCount = await Report.countDocuments({ reportedId: reportedUser });
+  
+  // Ban if 5 or more reports
+  if (reportCount >= 5) {
+  const bannedUser = new BannedUser({
+  username: reportedUser,
+  reportCount: reportCount,
+  reason: "Received 5 or more reports from community members"
+  });
+  await bannedUser.save();
+  
+  // Notify all clients about the ban
+  io.emit('user banned', reportedUser);
+  }
+  
+  } catch (error) {
+  console.error('Error reporting user:', error);
+  }
+  });
+  
+  // Manually ban a user
+  socket.on('ban user', async ({ username: bannedUsername }) => {
+  if (!currentUsername) return;
+  
+  try {
+  // Check if user is already banned
+  const existingBan = await BannedUser.findOne({ username: bannedUsername });
+  if (existingBan) {
+  return; // Already banned
+  }
+  
+  // Count total reports for this user
+  const reportCount = await Report.countDocuments({ reportedId: bannedUsername });
+  
+  // Create ban record
+  const bannedUser = new BannedUser({
+  username: bannedUsername,
+  reportCount: reportCount,
+  reason: "Banned by moderator"
+  });
+  await bannedUser.save();
+  
+  // Notify all clients about the ban
+  io.emit('user banned', bannedUsername);
+  
+  } catch (error) {
+  console.error('Error banning user:', error);
+  }
+  });
+  
+  // Get banned users
+  socket.on('get banned users', async () => {
+  if (!currentUsername) return;
+  
+  try {
+  const bannedUsers = await BannedUser.find().select('username');
+  socket.emit('banned users', bannedUsers.map(user => user.username));
+  } catch (error) {
+  console.error('Error getting banned users:', error);
+  socket.emit('banned users', []);
+  }
+  });
+
   // Handle signup
   socket.on('signup', async ({ username, email, password }) => {
     try {
