@@ -39,12 +39,16 @@
 <input type="password" id="login-password" placeholder="Enter your password" autocomplete="current-password">
 </div>
 </div>
-
 <div class="error-message" id="login-error"></div>
 
 <button class="primary-button" id="login-button">
 <span>Login</span>
 <i class="fas fa-arrow-right"></i>
+</button>
+
+<button class="secondary-button desktop-button" id="download-desktop-app">
+<i class="fas fa-desktop"></i>
+<span>Download Desktop App</span>
 </button>
 
 <p class="toggle-auth">Don't have an account? <span id="go-to-signup">Sign up</span></p>
@@ -586,6 +590,18 @@
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
+<script>
+
+document.addEventListener('DOMContentLoaded', function() {
+
+  const downloadDesktopAppButton = document.getElementById('download-desktop-app');
+  if (downloadDesktopAppButton) {
+    downloadDesktopAppButton.addEventListener('click', function() {
+      window.location.href = 'download.html';
+    });
+  }
+});
+</script>
 <script src="script.js"></script>
 </body>
 </html>

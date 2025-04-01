@@ -4,6 +4,78 @@ A clean, modern CSS with a focus on animations,
 responsiveness, and user experience
 */
 
+/* Donation Container */
+.donation-container {
+  text-align: center;
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+  max-width: 400px;
+  margin: 30px auto;
+}
+
+/* Title */
+.donation-container h2 {
+  font-size: 22px;
+  color: #333;
+  margin-bottom: 10px;
+}
+
+/* Text */
+.donation-container p {
+  font-size: 16px;
+  color: #555;
+  margin-bottom: 15px;
+}
+
+/* Donation Selection */
+.donation-selection {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Dropdown */
+#donationAmount {
+  padding: 10px;
+  font-size: 16px;
+  border: 2px solid #635bff;
+  border-radius: 5px;
+  background: white;
+  color: #333;
+  cursor: pointer;
+}
+
+/* Donate Button */
+#donateButton {
+  padding: 10px 20px;
+  font-size: 16px;
+  background: #635bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: 0.3s ease;
+}
+
+#donateButton:hover {
+  background: #5145cd;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .donation-container {
+      max-width: 90%;
+  }
+  .donation-selection {
+      flex-direction: column;
+      gap: 15px;
+  }
+}
+
+
 :root {
   /* Brand Colors */
   --primary-color: #5D5CDE;
@@ -2300,6 +2372,34 @@ responsiveness, and user experience
   }
   }
   
+  /* Button group for login form */
+  .button-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+    margin-bottom: var(--space-lg);
+  }
+
+  /* Desktop app button style enhancement */
+  .secondary-button#download-desktop-app {
+    display: flex;
+    justify-content: center;
+    gap: var(--space-sm);
+    transition: all var(--transition-medium);
+  }
+
+  .secondary-button#download-desktop-app:hover {
+    background-color: var(--dark-accent-bg);
+    justify-content: center;
+    border-color: var(--primary-color);
+  }
+
+  html:not(.dark) .secondary-button#download-desktop-app:hover {
+    background-color: var(--light-accent-bg);
+    justify-content: center;
+    border-color: var(--primary-color);
+  }
+
   /* Fix for mobile viewport height issues */
   @supports (-webkit-touch-callout: none) {
   #app, #auth-container {

@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Download WaSup Desktop</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Brand Colors */
+  --primary-color: #5D5CDE;
+  --primary-hover: #4A49B5;
+  --primary-focus: rgba(93, 92, 222, 0.25);
+  --primary-darker: #3a3ab2;
+  --primary-lighter: #7e7de9;
+  
+  /* Status Colors */
+  --success-color: #43b581;
+  --error-color: #f04747;
+  --warning-color: #faa61a;
+  --info-color: #3498db;
+  
+  /* Light Theme Colors */
+  --light-bg-primary: #ffffff;
+  --light-bg-secondary: #f8f9fa;
+  --light-bg-tertiary: #f2f3f5;
+  --light-accent-bg: #F0F2FF;
+  
+  --light-text-primary: #2e3338;
+  --light-text-secondary: #6c757d;
+  --light-text-tertiary: #99aab5;
+  
+  --light-border-color: #e3e5e8;
+  --light-divider-color: #ebedef;
+  
+  --light-input-bg: #ffffff;
+  --light-icon-color: #747f8d;
+  --light-header-bg: #ffffff;
+  --light-sidebar-bg: #f2f3f5;
+  --light-message-bg: #f8f9fa;
+  --light-message-own: #eef3ff;
+  --light-shadow-color: rgba(0, 0, 0, 0.08);
+  
+  /* Dark Theme Colors */
+  --dark-bg-primary: #1e1f22;
+  --dark-bg-secondary: #2b2d31;
+  --dark-bg-tertiary: #313338;
+  --dark-accent-bg: #2E2D5C;
+  
+  --dark-text-primary: #f1f1f1;
+  --dark-text-secondary: #b5bac1;
+  --dark-text-tertiary: #949ba4;
+  
+  --dark-border-color: #3f4147;
+  --dark-divider-color: #27282c;
+  
+  --dark-input-bg: #383a40;
+  --dark-icon-color: #b5bac1;
+  --dark-header-bg: #2b2d31;
+  --dark-sidebar-bg: #1e1f22;
+  --dark-message-bg: #32343a;
+  --dark-message-own: #343875;
+  --dark-shadow-color: rgba(0, 0, 0, 0.3);
+  
+  /* Spacing system (8px grid) */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-xxl: 48px;
+  
+  /* Radii */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+  
+  /* Animation */
+  --transition-short: 0.15s;
+  --transition-medium: 0.25s;
+  --transition-long: 0.4s;
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-out: cubic-bezier(0.33, 1, 0.68, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  
+  /* Font System */
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  --font-size-xs: 12px;
+  --font-size-sm: 14px;
+  --font-size-md: 16px;
+  --font-size-lg: 18px;
+  --font-size-xl: 20px;
+  --font-size-xxl: 24px;
+}
+
+/* Base Styles */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-family);
+  font-size: var(--font-size-md);
+  line-height: 1.5;
+  height: 100%;
+  overflow: hidden;
+  transition: background-color var(--transition-medium), color var(--transition-medium);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--dark-bg-primary);
+  color: var(--dark-text-primary);
+}
+
+/* Theme Management */
+html.dark {
+  color-scheme: dark;
+}
+
+html:not(.dark) {
+  color-scheme: light;
+}
+
+/* Apply theme colors */
+html.dark body {
+  background-color: var(--dark-bg-primary);
+  color: var(--dark-text-primary);
+}
+
+html:not(.dark) body {
+  background-color: var(--light-bg-primary);
+  color: var(--light-text-primary);
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+h1 {
+  font-size: var(--font-size-xxl);
+}
+
+h2 {
+  font-size: var(--font-size-xl);
+}
+
+h3 {
+  font-size: var(--font-size-lg);
+}
+
+p {
+  margin-bottom: var(--space-md);
+}
+
+a {
+  color: var(--primary-color);
+  text-decoration: none;
+  transition: color var(--transition-short);
+}
+
+a:hover {
+  color: var(--primary-hover);
+  text-decoration: underline;
+}
+
+/* Download Container */
+.download-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #4a49b7 0%, #5D5CDE 50%, #7e7de9 100%);
+  padding: var(--space-md);
+}
+
+.download-card {
+  background-color: var(--dark-bg-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  width: 100%;
+  max-width: 600px;
+  overflow: hidden;
+  animation: download-card-enter 0.6s var(--ease-bounce);
+}
+
+@keyframes download-card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+html:not(.dark) .download-card {
+  background-color: var(--light-bg-primary);
+}
+
+.download-logo {
+  padding: var(--space-xl) var(--space-md) var(--space-lg);
+  text-align: center;
+  color: var(--primary-color);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.download-logo i {
+  font-size: 48px;
+  margin-bottom: var(--space-sm);
+}
+
+.download-logo h1 {
+  font-size: 32px;
+  font-weight: 700;
+}
+
+.download-content {
+  padding: var(--space-xl);
+  text-align: center;
+}
+
+.download-content h2 {
+  margin-bottom: var(--space-md);
+}
+
+.download-subtitle {
+  color: var(--dark-text-secondary);
+  margin-bottom: var(--space-xl);
+}
+
+html:not(.dark) .download-subtitle {
+  color: var(--light-text-secondary);
+}
+
+.platform-container {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-xl);
+  margin-bottom: var(--space-xl);
+  flex-wrap: wrap;
+}
+
+.platform-card {
+  width: 150px;
+  background-color: var(--dark-bg-secondary);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  cursor: pointer;
+  transition: all var(--transition-medium);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+html:not(.dark) .platform-card {
+  background-color: var(--light-bg-secondary);
+}
+
+.platform-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px var(--dark-shadow-color);
+}
+
+html:not(.dark) .platform-card:hover {
+  box-shadow: 0 10px 20px var(--light-shadow-color);
+}
+
+.platform-card.detected {
+  border: 2px solid var(--primary-color);
+  background-color: var(--dark-accent-bg);
+}
+
+html:not(.dark) .platform-card.detected {
+  background-color: var(--light-accent-bg);
+}
+
+.platform-icon {
+  font-size: 32px;
+  color: var(--primary-color);
+}
+
+.platform-name {
+  font-weight: 600;
+}
+
+.platform-info {
+  font-size: var(--font-size-xs);
+  color: var(--dark-text-tertiary);
+}
+
+html:not(.dark) .platform-info {
+  color: var(--light-text-tertiary);
+}
+
+.download-button {
+  margin-top: var(--space-lg);
+}
+
+/* Buttons */
+.primary-button {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--space-sm);
+  background-color: var(--primary-color);
+  color: white;
+  border-radius: var(--radius-md);
+  padding: var(--space-md) var(--space-lg);
+  font-weight: 600;
+  transition: all var(--transition-medium);
+  width: 100%;
+  max-width: 300px;
+  margin: 0 auto;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 2px 5px var(--primary-focus);
+}
+
+.primary-button:hover {
+  background-color: var(--primary-hover);
+  transform: translateY(-2px);
+}
+
+.primary-button:active {
+  transform: translateY(0);
+}
+
+.secondary-button {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--space-sm);
+  background-color: transparent;
+  color: var(--dark-text-primary);
+  border: 1px solid var(--dark-border-color);
+  border-radius: var(--radius-md);
+  padding: var(--space-md) var(--space-lg);
+  font-weight: 600;
+  transition: all var(--transition-medium);
+  margin-top: var(--space-md);
+  width: auto;
+  cursor: pointer;
+}
+
+html:not(.dark) .secondary-button {
+  color: var(--light-text-primary);
+  border-color: var(--light-border-color);
+}
+
+.secondary-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+html:not(.dark) .secondary-button:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.return-link {
+  margin-top: var(--space-xl);
+  text-align: center;
+}
+
+/* Mobile Styles */
+@media (max-width: 768px) {
+  .platform-container {
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-lg);
+  }
+  
+  .platform-card {
+    width: 100%;
+    max-width: 250px;
+  }
+}
+
+@media (max-width: 576px) {
+  .download-card {
+    max-width: 100%;
+  }
+  
+  .download-content {
+    padding: var(--space-lg);
+  }
+}
+</style>
+</head>
+<body>
+<div class="download-container">
+  <div class="download-card">
+    <div class="download-logo">
+      <i class="fas fa-comments"></i>
+      <h1>WaSup</h1>
+    </div>
+    
+    <div class="download-content">
+      <h2>Download Desktop App</h2>
+      <p class="download-subtitle">Choose your platform below to download the WaSup desktop application</p>
+      
+      <div class="platform-container">
+        <div class="platform-card" id="windows-card">
+          <div class="platform-icon">
+            <i class="fab fa-windows"></i>
+          </div>
+          <div class="platform-name">Windows</div>
+          <div class="platform-info">Windows 10/11</div>
+        </div>
+        
+        <div class="platform-card" id="mac-card">
+          <div class="platform-icon">
+            <i class="fab fa-apple"></i>
+          </div>
+          <div class="platform-name">macOS</div>
+          <div class="platform-info">10.14 or newer</div>
+        </div>
+        
+        <div class="platform-card" id="linux-card">
+          <div class="platform-icon">
+            <i class="fab fa-linux"></i>
+          </div>
+          <div class="platform-name">Linux</div>
+          <div class="platform-info">AppImage File</div>
+        </div>
+      </div>
+      
+      <button class="primary-button" id="download-button">
+        <i class="fas fa-download"></i>
+        <span>Download for <span id="platform-text">your platform</span></span>
+      </button>
+      
+      <div class="return-link">
+        <a href="index.html" class="secondary-button">
+          <i class="fas fa-arrow-left"></i>
+          <span>Return to Login</span>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Detect the user's operating system
+document.addEventListener('DOMContentLoaded', function() {
+  const userAgent = navigator.userAgent.toLowerCase();
+  const windowsCard = document.getElementById('windows-card');
+  const macCard = document.getElementById('mac-card');
+  const linuxCard = document.getElementById('linux-card');
+  const downloadButton = document.getElementById('download-button');
+  const platformText = document.getElementById('platform-text');
+  
+  let detectedOS = 'unknown';
+  let downloadURL = '';
+  
+  // Detect OS
+  if (userAgent.indexOf('win') !== -1) {
+    detectedOS = 'windows';
+    windowsCard.classList.add('detected');
+    platformText.textContent = 'Windows';
+    downloadURL = 'https://drive.google.com/file/d/1nR3keKJhAK34iPkWtxSQ2CXzquhQ3-dO/view?usp=sharing';
+  } else if (userAgent.indexOf('mac') !== -1) {
+    detectedOS = 'mac';
+    macCard.classList.add('detected');
+    platformText.textContent = 'macOS';
+    downloadURL = 'https://drive.google.com/file/d/1geobWwAeqd8-aGCY3FH_cO_55obYGcca/view?usp=sharing';
+  } else if (userAgent.indexOf('linux') !== -1) {
+    detectedOS = 'linux';
+    linuxCard.classList.add('detected');
+    platformText.textContent = 'Linux';
+    downloadURL = 'https://drive.google.com/file/d/1p7DP6hXkyejbveSG9srYKpqr7mh8148v/view?usp=sharing';
+  }
+  
+  // Platform card click handlers
+  windowsCard.addEventListener('click', function() {
+    resetCards();
+    windowsCard.classList.add('detected');
+    platformText.textContent = 'Windows';
+    downloadURL = 'https://drive.google.com/file/d/1nR3keKJhAK34iPkWtxSQ2CXzquhQ3-dO/view?usp=sharing';
+  });
+  
+  macCard.addEventListener('click', function() {
+    resetCards();
+    macCard.classList.add('detected');
+    platformText.textContent = 'macOS';
+    downloadURL = 'https://drive.google.com/file/d/1geobWwAeqd8-aGCY3FH_cO_55obYGcca/view?usp=sharing';
+  });
+  
+  linuxCard.addEventListener('click', function() {
+    resetCards();
+    linuxCard.classList.add('detected');
+    platformText.textContent = 'Linux';
+    downloadURL = 'https://drive.google.com/file/d/1p7DP6hXkyejbveSG9srYKpqr7mh8148v/view?usp=sharing';
+  });
+  
+  // Download button click handler
+  downloadButton.addEventListener('click', function() {
+    // For Poe canvas, we'll open in a new tab instead of direct download
+    window.open(downloadURL, '_blank');
+  });
+  
+  function resetCards() {
+    windowsCard.classList.remove('detected');
+    macCard.classList.remove('detected');
+    linuxCard.classList.remove('detected');
+  }
+  
+  // Check for dark mode preference
+  if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    document.documentElement.classList.add('dark');
+  } else {
+    document.documentElement.classList.remove('dark');
+  }
+  
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+    if (event.matches) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  });
+});
+</script>
+</body>
+</html>
