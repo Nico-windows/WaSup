@@ -21,7 +21,7 @@ responsiveness, and user experience
   width: 100%;
   background-color: #24292e;
   display: flex;
-  justify-content: center;
+  justify-content: left;
   align-items: center;
   text-align: center;
   padding: 10px 0;
@@ -40,8 +40,6 @@ responsiveness, and user experience
 .github-link a:hover {
   background-color: #444c56;
 }
-
-
 
 /* Title */
 .donation-container h2 {
