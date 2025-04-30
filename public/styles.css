@@ -20,6 +20,9 @@ responsiveness, and user experience
   top: 0;
   width: 100%;
   background-color: #24292e;
+  display: flex;
+  justify-content: center;
+  align-items: center;
   text-align: center;
   padding: 10px 0;
   z-index: 1000;
