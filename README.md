@@ -12,7 +12,7 @@ Features:
 - People tab
 - Saving messages and server
 - Login/ Sign up (out in 0.7)
-- Revamped UI and settings menu (coming out in 0.9)
+- Revamped UI and settings menu (out in 0.8)
 
 I'll update this as I finish features, find my timeline below:
 
