@@ -15,6 +15,27 @@ responsiveness, and user experience
   margin: 30px auto;
 }
 
+.github-link {
+  margin: 20px;
+  text-align: center;
+}
+
+.github-link a {
+  display: inline-block;
+  background-color: #24292e;
+  color: #ffffff;
+  padding: 10px 20px;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: bold;
+  transition: background-color 0.3s ease;
+}
+
+.github-link a:hover {
+  background-color: #444c56;
+}
+
+
 /* Title */
 .donation-container h2 {
   font-size: 22px;
