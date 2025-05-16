@@ -23,7 +23,12 @@ May --> Version 1 + bugs fleshed out.
 # Building the app.
 
 Web App:
-You will need the following modules:
+
+Firstly, you need to clone the repo:
+git clone https://github.com/NicoButNot/WaSup.git
+This shouldn't take to long.
+
+Then you will need the following modules:
  ```
 npm install bcrypt
 ```
